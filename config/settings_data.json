@@ -1,6 +1,14 @@
 {
-  "current": "Default",
-  "presets": {
-    "Default": { }
-  }
+    "current": "LoCo Cookers",
+    "presets": {
+        "LoCo Cookers": {
+            "sections": {
+                "1594972834928": {
+                    "type": "image-banner",
+                    "disabled": true
+                }
+            },
+            "content_for_index": ["1594972834928"]
+        }
+    }
 }

@@ -1,0 +1,92 @@
+{{ 'section-image-banner.css' | asset_url | stylesheet_tag }}
+
+{%- style -%}
+  .img_class {
+    display: block; 
+    width: 100%; 
+    border: 0; 
+    margin: 0;
+  }
+{%- endstyle -%}   
+
+<div class="image-banner__wrapper">
+  <div class="image-banner__content">
+  <div class="image-banner__text">
+    {% if section.settings.heading %}
+    <h2 class="heading heading--display">
+    {% if section.settings.eyebrow %}
+      <span class="eyebrow">{{section.settings.eyebrow}}</span>
+    {% endif %}
+    {{section.settings.heading}}
+    </h2>
+    {% endif %}
+    {% if section.settings.subheading %}
+      <p class="subheading subheading--display">{{section.settings.subheading}}</p>
+    {% endif %}
+    {% if section.settings.banner_link or section.settings.button_label %}
+    <div class="image-banner__cta">
+      <a class="button button--primary button--lg" href="{{section.settings.banner_link}}">{{section.settings.button_label}}</a>
+    </div>
+    {% endif %}
+    </div>
+  </div>
+  <div class="image-banner__bg">
+    {% if section.settings.image %}
+      {{ section.settings.image | image_url: width: 1500 | image_tag:
+        loading: 'lazy',
+        width: section.settings.image.width,
+        class: "img_class",
+        sizes: "100vw",
+        widths: '375, 550, 750, 1100, 1500, 1780, 2000, 3000, 3840',
+        alt: section.settings.image.alt | escape
+      }}
+    {% endif %}
+  </div>
+  <div class="image-banner__overlay"></div>
+</div>
+
+
+{% schema %}
+{
+  "name": "Image Banner",
+  "tag": "section",
+  "class": "image-banner",
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Image"
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "default": "Enim ad minim",
+      "label": "Eyebrow",
+      "info": "A word or two that appears above the heading"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "default": "Image Banner",
+      "label": " Heading"
+    },
+    {
+      "type": "textarea",
+      "id": "subheading",
+      "default": "Lorem ipsum dolor sit amet, consectetur adipiscing elit",
+      "label": "Subheading"
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "Button",
+      "default": "Shop Now"
+    }, 
+    {
+      "type": "url",
+      "id": "banner_link",
+      "label": "Banner Link"
+    }
+  ]
+}
+{% endschema %}

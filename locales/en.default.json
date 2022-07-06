@@ -4,5 +4,10 @@
       "title": "Not found",
       "subtext_html": "The page you were looking for does not exist"
     }
+  },
+  "homepage": {
+    "onboarding": {
+      "no_content": "This section doesn’t currently include any content. Add content to this section using the sidebar."
+    }
   }
 }

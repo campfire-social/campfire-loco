@@ -1,2 +1,51 @@
 // Put your styles in this file.
 // Note: "@import" rules aren’t supported.
+
+  
+  @font-face {
+    font-family: 'Clarendon';
+    src: url({{'Clarendon.eot' | asset_url }});
+
+        url({{'Clarendon.eot?#iefix' | asset_url }}) format('embedded-opentype'),
+        url({{ 'Clarendon.woff2' | asset_url }}) format('woff2'),
+        url({{'Clarendon.woff' | asset_url }}) format('woff'),
+        url({{'Clarendon.ttf' | asset_url }}) format('truetype'),
+        url({{'Clarendon.svg#Clarendon' | asset_url }}) format('svg');
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+    @font-face {
+        font-family: 'Clarendon';
+        src: url({{'Clarendon.svg#Clarendon' | asset_url }}) format('svg');
+    }
+}
+  
+  @font-face {
+    font-family: 'Titillium Web';
+    src: url({{ 'titilliumwebreg.woff' | asset_url }}) format('woff');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+  }
+  
+  @font-face {
+    font-family: 'Titillium Web';
+    src: url({{ 'titilliumwebsemi.woff' | asset_url }}) format('woff');    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+  }
+  
+  @font-face {
+    font-family: 'Titillium Web';
+    src: url({{ 'titilliumwebbold.woff' | asset_url }}) format('woff');    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+  }
+
+
+
+
+
