@@ -37,36 +37,57 @@ function show(el) { el.classList.remove("hidden"); }
 function hide(el) { el.classList.add("hidden"); }
 
 // ---------- Auth ----------
-$("form-send-code").addEventListener("submit", async (e) => {
+let authMode = "signin"; // or "signup"
+
+$("btn-auth-toggle").addEventListener("click", () => {
+  authMode = authMode === "signin" ? "signup" : "signin";
+  const isSignup = authMode === "signup";
+  $("auth-subtitle").textContent = isSignup ? "Create your account." : "Sign in to keep tracking.";
+  $("btn-auth-submit").textContent = isSignup ? "Create account" : "Sign in";
+  $("btn-auth-toggle").textContent = isSignup ? "Already have an account? Sign in" : "New here? Create an account";
+  $("password-input").setAttribute("autocomplete", isSignup ? "new-password" : "current-password");
+  hide($("login-error"));
+  hide($("login-info"));
+});
+
+$("form-auth").addEventListener("submit", async (e) => {
   e.preventDefault();
   hide($("login-error"));
+  hide($("login-info"));
   const email = $("email-input").value.trim();
-  const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
-  if (error) { showLoginError(error.message); return; }
-  $("email-echo").textContent = email;
-  hide($("form-send-code"));
-  show($("form-verify-code"));
-  $("code-input").focus();
-});
-
-$("form-verify-code").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  hide($("login-error"));
-  const email = $("email-echo").textContent;
-  const token = $("code-input").value.trim();
-  const { error } = await sb.auth.verifyOtp({ email, token, type: "email" });
-  if (error) { showLoginError(error.message); return; }
-  // onAuthStateChange picks up the new session and boots the app
-});
-
-$("btn-resend").addEventListener("click", () => {
-  hide($("form-verify-code"));
-  show($("form-send-code"));
-  $("code-input").value = "";
+  const password = $("password-input").value;
+  const submitBtn = $("btn-auth-submit");
+  submitBtn.disabled = true;
+  try {
+    if (authMode === "signup") {
+      const { data, error } = await sb.auth.signUp({ email, password });
+      if (error) { showLoginError(error.message); return; }
+      if (!data.session) {
+        showLoginInfo("Account created. Give it a few seconds, then hit Sign in.");
+        authMode = "signin";
+        $("auth-subtitle").textContent = "Sign in to keep tracking.";
+        submitBtn.textContent = "Sign in";
+        $("btn-auth-toggle").textContent = "New here? Create an account";
+      }
+      // if data.session is already set, onAuthStateChange boots the app
+    } else {
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) { showLoginError(error.message); return; }
+      // onAuthStateChange picks up the new session and boots the app
+    }
+  } finally {
+    submitBtn.disabled = false;
+  }
 });
 
 function showLoginError(msg) {
   const el = $("login-error");
+  el.textContent = msg;
+  show(el);
+}
+
+function showLoginInfo(msg) {
+  const el = $("login-info");
   el.textContent = msg;
   show(el);
 }
@@ -86,10 +107,9 @@ sb.auth.onAuthStateChange((_event, session) => {
   } else {
     show($("view-login"));
     hide($("view-main"));
-    $("form-send-code").reset();
-    $("form-verify-code").reset();
-    hide($("form-verify-code"));
-    show($("form-send-code"));
+    $("form-auth").reset();
+    hide($("login-error"));
+    hide($("login-info"));
   }
 });
 

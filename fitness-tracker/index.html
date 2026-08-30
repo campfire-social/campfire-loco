@@ -17,27 +17,23 @@
     <section id="view-login" class="view">
       <div class="login-card">
         <h1>💪 100 A Day</h1>
-        <p class="muted">Sign in with your email. No password &mdash; we'll text^H^H^H email you a 6-digit code.</p>
+        <p class="muted" id="auth-subtitle">Sign in to keep tracking.</p>
 
-        <form id="form-send-code" class="stack">
+        <form id="form-auth" class="stack">
           <label class="field">
             <span>Email</span>
             <input type="email" id="email-input" autocomplete="email" inputmode="email" required placeholder="you@example.com" />
           </label>
-          <button type="submit" class="btn btn-primary btn-block">Send code</button>
-        </form>
-
-        <form id="form-verify-code" class="stack hidden">
-          <p class="muted">Code sent to <strong id="email-echo"></strong>. Check your inbox.</p>
           <label class="field">
-            <span>6-digit code</span>
-            <input type="text" id="code-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" required placeholder="123456" />
+            <span>Password</span>
+            <input type="password" id="password-input" autocomplete="current-password" required minlength="6" placeholder="At least 6 characters" />
           </label>
-          <button type="submit" class="btn btn-primary btn-block">Verify &amp; sign in</button>
-          <button type="button" id="btn-resend" class="btn btn-ghost btn-block">Use a different email</button>
+          <button type="submit" id="btn-auth-submit" class="btn btn-primary btn-block">Sign in</button>
+          <button type="button" id="btn-auth-toggle" class="btn btn-ghost btn-block">New here? Create an account</button>
         </form>
 
         <p id="login-error" class="error hidden"></p>
+        <p id="login-info" class="muted hidden"></p>
       </div>
     </section>
 
