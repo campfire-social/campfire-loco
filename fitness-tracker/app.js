@@ -26,6 +26,7 @@ function friendlyDate(dateStr) {
 const state = {
   session: null,
   pushupGoal: 100,
+  displayName: "",
   historyOldestFetched: null, // date string, exclusive lower bound of what's been rendered
   dayDetailDate: null,
 };
@@ -120,13 +121,14 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
 
 function switchTab(name) {
   document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
-  ["today", "history", "settings"].forEach((t) => {
+  ["today", "feed", "history", "settings"].forEach((t) => {
     const panel = $(`tab-${t}`);
     if (t === name) show(panel); else hide(panel);
   });
   hide($("tab-day-detail"));
   if (name === "history") loadHistory(true);
   if (name === "today") loadTodayTab();
+  if (name === "feed") loadFeedTab();
   if (name === "settings") loadSettingsTab();
 }
 
@@ -138,7 +140,7 @@ $("btn-back-history").addEventListener("click", () => {
 // ---------- Boot ----------
 async function bootApp() {
   $("account-email").textContent = state.session.user.email;
-  await ensureSettings();
+  await Promise.all([ensureSettings(), ensureProfile()]);
   applyGoalToUI();
   switchTab("today");
   registerServiceWorker();
@@ -159,6 +161,18 @@ async function ensureSettings() {
   } else {
     state.pushupGoal = data.pushup_goal;
   }
+}
+
+async function ensureProfile() {
+  const uid = state.session.user.id;
+  const { data, error } = await sb.from("profiles").select("*").eq("user_id", uid).maybeSingle();
+  if (error) { console.error(error); return; }
+  if (data) { state.displayName = data.display_name; return; }
+  const fallback = state.session.user.email.split("@")[0];
+  const name = prompt("What's your name? (Shown to others in the shared feed)", fallback) || fallback;
+  const { error: insErr } = await sb.from("profiles").insert({ user_id: uid, display_name: name });
+  if (insErr) { console.error(insErr); return; }
+  state.displayName = name;
 }
 
 function applyGoalToUI() {
@@ -394,6 +408,93 @@ function buildHistoryRow(dateStr, day) {
 
 $("btn-load-more").addEventListener("click", () => loadHistory(false));
 
+// ---------- Feed tab (shared progress across everyone signed in) ----------
+async function loadFeedTab() {
+  const today = todayStr();
+  const feedStart = toDateStr(addDays(new Date(), -2)); // today + 2 prior days
+
+  const [profilesRes, settingsRes, entriesRes] = await Promise.all([
+    sb.from("profiles").select("user_id, display_name"),
+    sb.from("settings").select("user_id, pushup_goal"),
+    sb.from("activity_entries").select("user_id, entry_date, activity_type, amount, created_at").gte("entry_date", feedStart).order("created_at", { ascending: false }),
+  ]);
+
+  const names = {};
+  (profilesRes.data || []).forEach((p) => { names[p.user_id] = p.display_name; });
+  const goals = {};
+  (settingsRes.data || []).forEach((s) => { goals[s.user_id] = s.pushup_goal; });
+  const entries = entriesRes.data || [];
+
+  renderFeedToday(today, entries, names, goals);
+  renderFeedRecent(entries, names);
+}
+
+function renderFeedToday(today, entries, names, goals) {
+  const totals = {}; // user_id -> {pushup, situp}
+  for (const e of entries) {
+    if (e.entry_date !== today) continue;
+    const t = (totals[e.user_id] ??= { pushup: 0, situp: 0 });
+    t[e.activity_type] += e.amount;
+  }
+  // Make sure everyone with a name shows up, even at 0 for today.
+  for (const uid of Object.keys(names)) totals[uid] ??= { pushup: 0, situp: 0 };
+
+  const list = $("feed-today-list");
+  list.innerHTML = "";
+  const userIds = Object.keys(totals).sort((a, b) => (names[a] || "").localeCompare(names[b] || ""));
+  for (const uid of userIds) {
+    const t = totals[uid];
+    const pushupGoal = goals[uid] || 100;
+    const situpGoal = pushupGoal * 2;
+    const li = document.createElement("li");
+    li.className = "feed-person";
+    const isMe = uid === state.session.user.id;
+    li.innerHTML = `
+      <div class="feed-person-name">${names[uid] || "Someone"}${isMe ? " (you)" : ""}</div>
+      <div class="feed-bars">
+        ${feedBarRow("💪", t.pushup, pushupGoal, "")}
+        ${feedBarRow("🔥", t.situp, situpGoal, "situp")}
+      </div>
+    `;
+    list.appendChild(li);
+  }
+}
+
+function feedBarRow(label, value, goal, altClass) {
+  const pct = Math.min(1, goal ? value / goal : 0) * 100;
+  return `
+    <div class="feed-bar-row">
+      <span class="feed-bar-label">${label} of ${goal}</span>
+      <span class="feed-bar-track"><span class="feed-bar-fill ${altClass}" style="width:${pct}%"></span></span>
+      <span class="feed-bar-num">${value}</span>
+    </div>
+  `;
+}
+
+function renderFeedRecent(entries, names) {
+  const list = $("feed-recent-list");
+  const empty = $("feed-recent-empty");
+  list.innerHTML = "";
+  const recent = entries.slice(0, 40);
+  if (!recent.length) { show(empty); return; }
+  hide(empty);
+  for (const entry of recent) {
+    const li = document.createElement("li");
+    const time = new Date(entry.created_at).toLocaleString(undefined, {
+      weekday: "short", hour: "numeric", minute: "2-digit",
+    });
+    li.innerHTML = `
+      <span>
+        <span class="entry-person">${names[entry.user_id] || "Someone"}</span>
+        <span class="entry-tag ${entry.activity_type === "situp" ? "situp" : ""}">${entry.activity_type}</span>
+        +${entry.amount}
+        <span class="entry-time">${time}</span>
+      </span>
+    `;
+    list.appendChild(li);
+  }
+}
+
 // ---------- Day detail ----------
 async function openDayDetail(dateStr) {
   state.dayDetailDate = dateStr;
@@ -427,7 +528,21 @@ $("btn-save-day-status").addEventListener("click", async () => {
 // ---------- Settings tab ----------
 function loadSettingsTab() {
   applyGoalToUI();
+  $("display-name-input").value = state.displayName;
 }
+
+$("btn-save-name").addEventListener("click", async () => {
+  const name = $("display-name-input").value.trim();
+  if (!name) return;
+  const uid = state.session.user.id;
+  const { error } = await sb.from("profiles").upsert(
+    { user_id: uid, display_name: name },
+    { onConflict: "user_id" }
+  );
+  if (error) { console.error(error); return; }
+  state.displayName = name;
+  flashSaved($("name-saved-msg"));
+});
 
 $("pushup-goal-input").addEventListener("input", () => {
   const val = parseInt($("pushup-goal-input").value, 10) || 0;

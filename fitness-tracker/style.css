@@ -389,6 +389,74 @@ html, body {
   text-align: center;
 }
 
+/* ---------- Feed ---------- */
+
+.feed-today {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.feed-person {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.feed-person:last-child { border-bottom: none; }
+
+.feed-person-name {
+  font-weight: 800;
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.feed-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feed-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.feed-bar-label {
+  width: 66px;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.feed-bar-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.feed-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.feed-bar-fill.situp { background: var(--alt); }
+
+.feed-bar-num {
+  width: 64px;
+  flex-shrink: 0;
+  text-align: right;
+  font-weight: 700;
+}
+
+.entry-person {
+  font-weight: 700;
+  margin-right: 4px;
+}
+
 /* ---------- History ---------- */
 
 .history-list {

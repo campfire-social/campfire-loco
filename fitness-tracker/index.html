@@ -46,6 +46,7 @@
 
       <nav class="tabs">
         <button class="tab-btn active" data-tab="today">Today</button>
+        <button class="tab-btn" data-tab="feed">Feed</button>
         <button class="tab-btn" data-tab="history">History</button>
         <button class="tab-btn" data-tab="settings">Settings</button>
       </nav>
@@ -146,6 +147,19 @@
         </div>
       </div>
 
+      <!-- FEED TAB -->
+      <div id="tab-feed" class="tab-panel hidden">
+        <div class="card">
+          <h2>Today, side by side</h2>
+          <ul class="feed-today" id="feed-today-list"></ul>
+        </div>
+        <div class="card">
+          <h2>Recent activity</h2>
+          <ul class="entry-list" id="feed-recent-list"></ul>
+          <p class="muted" id="feed-recent-empty">Nothing logged yet.</p>
+        </div>
+      </div>
+
       <!-- HISTORY TAB -->
       <div id="tab-history" class="tab-panel hidden">
         <div class="card">
@@ -201,6 +215,16 @@
 
       <!-- SETTINGS TAB -->
       <div id="tab-settings" class="tab-panel hidden">
+        <div class="card">
+          <h2>Your name</h2>
+          <p class="muted">Shown to others in the shared feed.</p>
+          <label class="field">
+            <span>Display name</span>
+            <input type="text" id="display-name-input" maxlength="40" placeholder="e.g. Mack" />
+          </label>
+          <button id="btn-save-name" class="btn btn-primary btn-block">Save name</button>
+          <p id="name-saved-msg" class="saved-msg hidden">Saved ✓</p>
+        </div>
         <div class="card">
           <h2>Goals</h2>
           <label class="field">
