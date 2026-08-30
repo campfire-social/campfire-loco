@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#ff6b35" />
+  <title>100 A Day</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- LOGIN -->
+    <section id="view-login" class="view">
+      <div class="login-card">
+        <h1>💪 100 A Day</h1>
+        <p class="muted">Sign in with your email. No password &mdash; we'll text^H^H^H email you a 6-digit code.</p>
+
+        <form id="form-send-code" class="stack">
+          <label class="field">
+            <span>Email</span>
+            <input type="email" id="email-input" autocomplete="email" inputmode="email" required placeholder="you@example.com" />
+          </label>
+          <button type="submit" class="btn btn-primary btn-block">Send code</button>
+        </form>
+
+        <form id="form-verify-code" class="stack hidden">
+          <p class="muted">Code sent to <strong id="email-echo"></strong>. Check your inbox.</p>
+          <label class="field">
+            <span>6-digit code</span>
+            <input type="text" id="code-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" required placeholder="123456" />
+          </label>
+          <button type="submit" class="btn btn-primary btn-block">Verify &amp; sign in</button>
+          <button type="button" id="btn-resend" class="btn btn-ghost btn-block">Use a different email</button>
+        </form>
+
+        <p id="login-error" class="error hidden"></p>
+      </div>
+    </section>
+
+    <!-- MAIN APP -->
+    <section id="view-main" class="view hidden">
+      <header class="topbar">
+        <div class="topbar-title" id="today-heading">Today</div>
+        <button id="btn-logout" class="icon-btn" title="Sign out" aria-label="Sign out">⎋</button>
+      </header>
+
+      <nav class="tabs">
+        <button class="tab-btn active" data-tab="today">Today</button>
+        <button class="tab-btn" data-tab="history">History</button>
+        <button class="tab-btn" data-tab="settings">Settings</button>
+      </nav>
+
+      <!-- TODAY TAB -->
+      <div id="tab-today" class="tab-panel">
+
+        <div class="status-report" id="status-report">
+          <div class="status-row">
+            <div class="ring-stat">
+              <svg viewBox="0 0 100 100" class="ring">
+                <circle cx="50" cy="50" r="42" class="ring-bg" />
+                <circle cx="50" cy="50" r="42" class="ring-fg" id="ring-pushup" />
+              </svg>
+              <div class="ring-label">
+                <span class="ring-value" id="today-pushups">0</span>
+                <span class="ring-goal">/ <span id="goal-pushups">100</span></span>
+                <span class="ring-name">push-ups</span>
+              </div>
+            </div>
+            <div class="ring-stat">
+              <svg viewBox="0 0 100 100" class="ring">
+                <circle cx="50" cy="50" r="42" class="ring-bg" />
+                <circle cx="50" cy="50" r="42" class="ring-fg ring-fg-alt" id="ring-situp" />
+              </svg>
+              <div class="ring-label">
+                <span class="ring-value" id="today-situps">0</span>
+                <span class="ring-goal">/ <span id="goal-situps">200</span></span>
+                <span class="ring-name">sit-ups</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="summary-strip">
+            <div class="summary-cell">
+              <span class="summary-num" id="week-pushups">0</span>
+              <span class="summary-label">push-ups this week</span>
+            </div>
+            <div class="summary-cell">
+              <span class="summary-num" id="month-pushups">0</span>
+              <span class="summary-label">push-ups this month</span>
+            </div>
+            <div class="summary-cell">
+              <span class="summary-num" id="alltime-pushups">0</span>
+              <span class="summary-label">push-ups all-time</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Add push-ups</h2>
+          <div class="btn-grid" data-type="pushup">
+            <button class="btn btn-tap" data-amount="10">+10</button>
+            <button class="btn btn-tap" data-amount="15">+15</button>
+            <button class="btn btn-tap" data-amount="20">+20</button>
+            <button class="btn btn-tap" data-amount="25">+25</button>
+            <button class="btn btn-tap" data-amount="50">+50</button>
+            <button class="btn btn-tap btn-custom" data-custom="pushup">+ custom</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Add sit-ups</h2>
+          <div class="btn-grid" data-type="situp">
+            <button class="btn btn-tap" data-amount="20">+20</button>
+            <button class="btn btn-tap" data-amount="25">+25</button>
+            <button class="btn btn-tap" data-amount="50">+50</button>
+            <button class="btn btn-tap" data-amount="100">+100</button>
+            <button class="btn btn-tap" data-amount="150">+150</button>
+            <button class="btn btn-tap btn-custom" data-custom="situp">+ custom</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Today's log</h2>
+          <ul class="entry-list" id="today-entries"></ul>
+          <p class="muted" id="today-entries-empty">Nothing logged yet today. Get after it.</p>
+        </div>
+
+        <div class="card">
+          <h2>Today's check-in</h2>
+          <label class="field">
+            <span>Weight (lb)</span>
+            <input type="number" step="0.1" id="weight-input" placeholder="e.g. 184.2" />
+          </label>
+          <div class="toggle-row">
+            <label class="toggle">
+              <input type="checkbox" id="ate-well-input" />
+              <span>Ate well today</span>
+            </label>
+            <label class="toggle">
+              <input type="checkbox" id="prayed-input" />
+              <span>Prayed today</span>
+            </label>
+          </div>
+          <button id="btn-save-status" class="btn btn-primary btn-block">Save check-in</button>
+          <p id="status-saved-msg" class="saved-msg hidden">Saved ✓</p>
+        </div>
+      </div>
+
+      <!-- HISTORY TAB -->
+      <div id="tab-history" class="tab-panel hidden">
+        <div class="card">
+          <h2>Past days</h2>
+          <ul class="history-list" id="history-list"></ul>
+          <button id="btn-load-more" class="btn btn-ghost btn-block">Load more</button>
+        </div>
+      </div>
+
+      <!-- DAY DETAIL (opened from history) -->
+      <div id="tab-day-detail" class="tab-panel hidden">
+        <button id="btn-back-history" class="btn btn-ghost">&larr; Back to history</button>
+        <div class="card">
+          <h2 id="day-detail-heading">Day</h2>
+
+          <h3>Add to this day</h3>
+          <div class="btn-grid" data-type="pushup" data-day-detail="1">
+            <button class="btn btn-tap" data-amount="10">+10</button>
+            <button class="btn btn-tap" data-amount="25">+25</button>
+            <button class="btn btn-tap" data-amount="50">+50</button>
+            <button class="btn btn-tap btn-custom" data-custom="pushup">+ custom push-ups</button>
+          </div>
+          <div class="btn-grid" data-type="situp" data-day-detail="1">
+            <button class="btn btn-tap" data-amount="25">+25</button>
+            <button class="btn btn-tap" data-amount="50">+50</button>
+            <button class="btn btn-tap" data-amount="100">+100</button>
+            <button class="btn btn-tap btn-custom" data-custom="situp">+ custom sit-ups</button>
+          </div>
+
+          <h3>Entries</h3>
+          <ul class="entry-list" id="day-detail-entries"></ul>
+          <p class="muted" id="day-detail-entries-empty">No push-ups or sit-ups logged this day.</p>
+
+          <h3>Check-in</h3>
+          <label class="field">
+            <span>Weight (lb)</span>
+            <input type="number" step="0.1" id="day-weight-input" />
+          </label>
+          <div class="toggle-row">
+            <label class="toggle">
+              <input type="checkbox" id="day-ate-well-input" />
+              <span>Ate well</span>
+            </label>
+            <label class="toggle">
+              <input type="checkbox" id="day-prayed-input" />
+              <span>Prayed</span>
+            </label>
+          </div>
+          <button id="btn-save-day-status" class="btn btn-primary btn-block">Save</button>
+          <p id="day-saved-msg" class="saved-msg hidden">Saved ✓</p>
+        </div>
+      </div>
+
+      <!-- SETTINGS TAB -->
+      <div id="tab-settings" class="tab-panel hidden">
+        <div class="card">
+          <h2>Goals</h2>
+          <label class="field">
+            <span>Daily push-up goal</span>
+            <input type="number" id="pushup-goal-input" min="1" />
+          </label>
+          <p class="muted">Sit-up goal is always double your push-up goal (<span id="situp-goal-preview">200</span>/day).</p>
+          <button id="btn-save-goal" class="btn btn-primary btn-block">Save goal</button>
+          <p id="goal-saved-msg" class="saved-msg hidden">Saved ✓</p>
+        </div>
+        <div class="card">
+          <h2>Account</h2>
+          <p class="muted" id="account-email"></p>
+          <button id="btn-logout-2" class="btn btn-ghost btn-block">Sign out</button>
+        </div>
+      </div>
+
+    </section>
+  </div>
+
+  <script src="vendor-supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

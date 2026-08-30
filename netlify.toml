@@ -1,0 +1,9 @@
+[build]
+  base = "fitness-tracker"
+  publish = "."
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
