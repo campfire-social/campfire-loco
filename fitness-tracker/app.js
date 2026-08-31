@@ -7,12 +7,6 @@ function toDateStr(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pa
 function parseDateStr(s) { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); }
 function todayStr() { return toDateStr(new Date()); }
 function addDays(d, delta) { const nd = new Date(d); nd.setDate(nd.getDate() + delta); return nd; }
-function startOfWeekStr(d = new Date()) {
-  const day = d.getDay();
-  const diff = (day === 0 ? -6 : 1) - day; // Monday start
-  return toDateStr(addDays(d, diff));
-}
-function startOfMonthStr(d = new Date()) { return toDateStr(new Date(d.getFullYear(), d.getMonth(), 1)); }
 function friendlyDate(dateStr) {
   const d = parseDateStr(dateStr);
   const today = todayStr();
@@ -22,15 +16,17 @@ function friendlyDate(dateStr) {
   return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
+const RING_CIRC = 2 * Math.PI * 52; // matches SVG r=52
+
 // ---------- State ----------
 const state = {
   session: null,
   pushupGoal: 100,
   displayName: "",
-  historyOldestFetched: null, // date string, exclusive lower bound of what's been rendered
+  todayExercise: "pushup",
+  dayDetailExercise: "pushup",
   dayDetailDate: null,
 };
-const HISTORY_PAGE_DAYS = 14;
 
 // ---------- Small DOM helpers ----------
 const $ = (id) => document.getElementById(id);
@@ -109,27 +105,22 @@ sb.auth.onAuthStateChange((_event, session) => {
 });
 
 // ---------- Tabs ----------
-document.querySelectorAll(".tab-btn").forEach((btn) => {
+document.querySelectorAll(".tab-bar .tab-btn").forEach((btn) => {
   btn.addEventListener("click", () => switchTab(btn.dataset.tab));
 });
 
 function switchTab(name) {
-  document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
+  document.querySelectorAll(".tab-bar .tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
   ["today", "feed", "history", "settings"].forEach((t) => {
     const panel = $(`tab-${t}`);
     if (t === name) show(panel); else hide(panel);
   });
   hide($("tab-day-detail"));
-  if (name === "history") loadHistory(true);
+  if (name === "history") loadHistoryTab();
   if (name === "today") loadTodayTab();
   if (name === "feed") loadFeedTab();
   if (name === "settings") loadSettingsTab();
 }
-
-$("btn-back-history").addEventListener("click", () => {
-  hide($("tab-day-detail"));
-  show($("tab-history"));
-});
 
 // ---------- Boot ----------
 async function bootApp() {
@@ -178,14 +169,6 @@ function applyGoalToUI() {
 }
 
 // ---------- Data access ----------
-async function fetchTotals(startDate, endDate) {
-  const { data, error } = await sb.rpc("get_activity_totals", { p_start: startDate, p_end: endDate });
-  if (error) { console.error(error); return { pushup: 0, situp: 0 }; }
-  const out = { pushup: 0, situp: 0 };
-  for (const row of data) out[row.activity_type] = Number(row.total);
-  return out;
-}
-
 async function fetchEntriesForDate(dateStr) {
   const uid = state.session.user.id;
   const { data, error } = await sb
@@ -198,6 +181,28 @@ async function fetchEntriesForDate(dateStr) {
   return data;
 }
 
+// Raw rows for the current user between two dates (inclusive) — grouped client-side by caller.
+async function fetchOwnEntriesRange(startDate, endDate) {
+  const uid = state.session.user.id;
+  const { data, error } = await sb
+    .from("activity_entries")
+    .select("entry_date, activity_type, amount")
+    .eq("user_id", uid)
+    .gte("entry_date", startDate)
+    .lte("entry_date", endDate);
+  if (error) { console.error(error); return []; }
+  return data;
+}
+
+function groupByDate(rows) {
+  const byDate = {};
+  for (const r of rows) {
+    const day = (byDate[r.entry_date] ??= { pushup: 0, situp: 0 });
+    day[r.activity_type] += r.amount;
+  }
+  return byDate;
+}
+
 async function fetchStatusForDate(dateStr) {
   const uid = state.session.user.id;
   const { data, error } = await sb
@@ -207,6 +212,32 @@ async function fetchStatusForDate(dateStr) {
     .eq("entry_date", dateStr)
     .maybeSingle();
   if (error) { console.error(error); return null; }
+  return data;
+}
+
+async function fetchLatestWeight() {
+  const uid = state.session.user.id;
+  const { data, error } = await sb
+    .from("daily_status")
+    .select("entry_date, weight")
+    .eq("user_id", uid)
+    .not("weight", "is", null)
+    .order("entry_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) { console.error(error); return null; }
+  return data;
+}
+
+async function fetchStatusRange(startDate, endDate) {
+  const uid = state.session.user.id;
+  const { data, error } = await sb
+    .from("daily_status")
+    .select("*")
+    .eq("user_id", uid)
+    .gte("entry_date", startDate)
+    .lte("entry_date", endDate);
+  if (error) { console.error(error); return []; }
   return data;
 }
 
@@ -240,46 +271,80 @@ async function saveStatus(dateStr, { weight, ateWell, prayed }) {
   return !error;
 }
 
+// ---------- Streak & headline logic ----------
+function goalsMetOn(dateStr, byDate, pushupGoal) {
+  const day = byDate[dateStr];
+  if (!day) return false;
+  return day.pushup >= pushupGoal && day.situp >= pushupGoal * 2;
+}
+
+function computeStreak(byDate, pushupGoal) {
+  let streak = 0;
+  let cursor = new Date();
+  if (goalsMetOn(toDateStr(cursor), byDate, pushupGoal)) {
+    streak++;
+    cursor = addDays(cursor, -1);
+  } else {
+    cursor = addDays(cursor, -1);
+  }
+  while (goalsMetOn(toDateStr(cursor), byDate, pushupGoal)) {
+    streak++;
+    cursor = addDays(cursor, -1);
+  }
+  return streak;
+}
+
+function personPct(totals, pushupGoal) {
+  const pushupPct = Math.min(1, pushupGoal ? totals.pushup / pushupGoal : 0);
+  const situpPct = Math.min(1, pushupGoal ? totals.situp / (pushupGoal * 2) : 0);
+  return (pushupPct + situpPct) / 2;
+}
+
+function todayHeadline(avgPct) {
+  if (avgPct <= 0) return "Nothing logged yet";
+  if (avgPct < 0.4) return "Off the mark";
+  if (avgPct < 0.9) return "Halfway there";
+  if (avgPct < 1) return "Nearly done";
+  return "Both goals done";
+}
+
 // ---------- Today tab ----------
 async function loadTodayTab() {
   const today = todayStr();
-  $("today-heading").textContent = new Date().toLocaleDateString(undefined, {
-    weekday: "long", month: "long", day: "numeric",
-  });
+  $("today-date").textContent = new Date().toLocaleDateString(undefined, {
+    weekday: "long", month: "short", day: "numeric",
+  }).toUpperCase();
 
-  const [todayTotals, weekTotals, monthTotals, allTimeTotals, entries, statusRow] = await Promise.all([
-    fetchTotals(today, today),
-    fetchTotals(startOfWeekStr(), today),
-    fetchTotals(startOfMonthStr(), today),
-    fetchTotals("2000-01-01", today),
+  const [rangeRows, entries] = await Promise.all([
+    fetchOwnEntriesRange(toDateStr(addDays(new Date(), -90)), today),
     fetchEntriesForDate(today),
-    fetchStatusForDate(today),
   ]);
+  const byDate = groupByDate(rangeRows);
+  const todayTotals = byDate[today] || { pushup: 0, situp: 0 };
 
   renderRings(todayTotals);
-  $("week-pushups").textContent = weekTotals.pushup;
-  $("month-pushups").textContent = monthTotals.pushup;
-  $("alltime-pushups").textContent = allTimeTotals.pushup;
+  $("streak-num").textContent = computeStreak(byDate, state.pushupGoal);
+  $("today-headline").textContent = todayHeadline(personPct(todayTotals, state.pushupGoal));
 
-  renderEntryList($("today-entries"), $("today-entries-empty"), entries);
-
-  $("weight-input").value = statusRow?.weight ?? "";
-  $("ate-well-input").checked = !!statusRow?.ate_well;
-  $("prayed-input").checked = !!statusRow?.prayed;
+  renderTodayLog(entries);
 }
 
 function renderRings(totals) {
   const pushupGoal = state.pushupGoal;
   const situpGoal = state.pushupGoal * 2;
-  const CIRC = 264; // 2 * PI * 42, matches SVG r=42
 
   $("today-pushups").textContent = totals.pushup;
   $("today-situps").textContent = totals.situp;
 
   const pushupPct = Math.min(1, totals.pushup / pushupGoal);
   const situpPct = Math.min(1, totals.situp / situpGoal);
-  $("ring-pushup").style.strokeDashoffset = CIRC - CIRC * pushupPct;
-  $("ring-situp").style.strokeDashoffset = CIRC - CIRC * situpPct;
+  $("ring-pushup").style.strokeDasharray = `${pushupPct * RING_CIRC} ${RING_CIRC}`;
+  $("ring-situp").style.strokeDasharray = `${situpPct * RING_CIRC} ${RING_CIRC}`;
+}
+
+function renderTodayLog(entries) {
+  $("today-log-count").textContent = `${entries.length} SET${entries.length === 1 ? "" : "S"}`;
+  renderEntryList($("today-entries"), $("today-entries-empty"), entries);
 }
 
 function renderEntryList(listEl, emptyEl, entries) {
@@ -289,13 +354,13 @@ function renderEntryList(listEl, emptyEl, entries) {
   for (const entry of entries) {
     const li = document.createElement("li");
     const time = new Date(entry.created_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    const isSitup = entry.activity_type === "situp";
     li.innerHTML = `
-      <span>
-        <span class="entry-tag ${entry.activity_type === "situp" ? "situp" : ""}">${entry.activity_type}</span>
-        +${entry.amount}
-        <span class="entry-time">${time}</span>
-      </span>
-      <button class="entry-delete" aria-label="Delete">✕</button>
+      <span class="entry-dot ${isSitup ? "situp" : ""}"></span>
+      <span class="entry-delta">+${entry.amount}</span>
+      <span class="entry-name">${isSitup ? "Sit-ups" : "Push-ups"}</span>
+      <span class="entry-time">${time}</span>
+      <button class="entry-delete" aria-label="Delete">&times;</button>
     `;
     li.querySelector(".entry-delete").addEventListener("click", async () => {
       await deleteEntry(entry.id);
@@ -305,16 +370,30 @@ function renderEntryList(listEl, emptyEl, entries) {
   }
 }
 
+// ---------- Exercise switches (Today + Day detail) ----------
+function wireExerciseSwitch(containerId, onChange) {
+  const container = $(containerId);
+  container.querySelectorAll("button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      container.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      onChange(btn.dataset.exercise);
+    });
+  });
+}
+wireExerciseSwitch("today-switch", (ex) => { state.todayExercise = ex; });
+wireExerciseSwitch("day-detail-switch", (ex) => { state.dayDetailExercise = ex; });
+
 // Quick-add buttons (Today tab + Day detail tab share this handler)
 document.addEventListener("click", async (e) => {
-  const btn = e.target.closest(".btn-tap");
+  const btn = e.target.closest(".quick-btn");
   if (!btn) return;
-  const grid = btn.closest(".btn-grid");
-  const activityType = grid.dataset.type;
-  const targetDate = grid.dataset.dayDetail ? state.dayDetailDate : todayStr();
+  const isDayDetail = btn.closest("#day-detail-grid");
+  const activityType = isDayDetail ? state.dayDetailExercise : state.todayExercise;
+  const targetDate = isDayDetail ? state.dayDetailDate : todayStr();
   let amount;
   if (btn.dataset.custom) {
-    const raw = prompt(`How many ${btn.dataset.custom === "situp" ? "sit-ups" : "push-ups"}?`);
+    const raw = prompt(`How many ${activityType === "situp" ? "sit-ups" : "push-ups"}?`);
     if (raw === null) return;
     amount = parseInt(raw, 10);
     if (!amount || amount <= 0) return;
@@ -324,83 +403,98 @@ document.addEventListener("click", async (e) => {
   btn.disabled = true;
   await addEntry(targetDate, activityType, amount);
   btn.disabled = false;
-  if (grid.dataset.dayDetail) loadDayDetail(targetDate); else loadTodayTab();
+  if (isDayDetail) loadDayDetail(targetDate); else loadTodayTab();
 });
-
-$("btn-save-status").addEventListener("click", async () => {
-  const weight = parseFloat($("weight-input").value);
-  const ok = await saveStatus(todayStr(), {
-    weight: Number.isNaN(weight) ? null : weight,
-    ateWell: $("ate-well-input").checked,
-    prayed: $("prayed-input").checked,
-  });
-  if (ok) flashSaved($("status-saved-msg"));
-});
-
-function flashSaved(el) {
-  show(el);
-  setTimeout(() => hide(el), 1800);
-}
 
 // ---------- History tab ----------
-async function loadHistory(reset) {
-  if (reset) {
-    $("history-list").innerHTML = "";
-    state.historyOldestFetched = addDays(new Date(), -1); // start from yesterday
-  }
-  const end = toDateStr(state.historyOldestFetched);
-  const start = toDateStr(addDays(state.historyOldestFetched, -(HISTORY_PAGE_DAYS - 1)));
+async function loadHistoryTab() {
+  const today = new Date();
+  const start = addDays(today, -6);
+  const startStr = toDateStr(start);
+  const endStr = toDateStr(today);
 
-  const uid = state.session.user.id;
-  const [entriesRes, statusRes] = await Promise.all([
-    sb.from("activity_entries").select("entry_date, activity_type, amount").eq("user_id", uid).gte("entry_date", start).lte("entry_date", end),
-    sb.from("daily_status").select("*").eq("user_id", uid).gte("entry_date", start).lte("entry_date", end),
+  const [rows, statusRows, latestWeight] = await Promise.all([
+    fetchOwnEntriesRange(startStr, endStr),
+    fetchStatusRange(startStr, endStr),
+    fetchLatestWeight(),
   ]);
+  const byDate = groupByDate(rows);
+  const weightByDate = {};
+  statusRows.forEach((s) => { if (s.weight != null) weightByDate[s.entry_date] = s.weight; });
 
-  const byDate = {};
-  const ensure = (d) => (byDate[d] ??= { pushup: 0, situp: 0, weight: null, ate_well: null, prayed: null });
-  (entriesRes.data || []).forEach((r) => { ensure(r.entry_date)[r.activity_type] += r.amount; });
-  (statusRes.data || []).forEach((r) => {
-    const day = ensure(r.entry_date);
-    day.weight = r.weight; day.ate_well = r.ate_well; day.prayed = r.prayed;
+  const days = []; // oldest to newest, 7 entries
+  for (let i = 6; i >= 0; i--) days.push(toDateStr(addDays(today, -i)));
+
+  let repsTotal = 0;
+  let daysLogged = 0;
+  days.forEach((d) => {
+    const t = byDate[d];
+    if (t) { repsTotal += t.pushup + t.situp; if (t.pushup + t.situp > 0) daysLogged++; }
   });
 
-  const frag = document.createDocumentFragment();
-  let cursor = parseDateStr(end);
-  const startDate = parseDateStr(start);
-  while (cursor >= startDate) {
-    const dateStr = toDateStr(cursor);
-    const day = byDate[dateStr] || { pushup: 0, situp: 0, weight: null, ate_well: null, prayed: null };
-    frag.appendChild(buildHistoryRow(dateStr, day));
-    cursor = addDays(cursor, -1);
-  }
-  $("history-list").appendChild(frag);
-  state.historyOldestFetched = addDays(startDate, -1);
+  $("week-reps-total").textContent = repsTotal;
+  $("stat-days-logged").textContent = `${daysLogged}/7`;
+  $("stat-weight").textContent = latestWeight ? latestWeight.weight : "—";
+
+  renderWeekChart(days, byDate);
+  renderPastDays(days, byDate, weightByDate);
 }
 
-function buildHistoryRow(dateStr, day) {
-  const btn = document.createElement("button");
-  btn.className = "history-row";
-  const badges = [
-    day.ate_well === true ? "🥗" : "",
-    day.prayed === true ? "🙏" : "",
-  ].join("");
-  btn.innerHTML = `
-    <span>
-      <span class="history-date">${friendlyDate(dateStr)}</span>
-      <div class="history-sub">${day.weight != null ? day.weight + " lb" : "no weight logged"}</div>
-    </span>
-    <span class="history-nums">
-      <span>${day.pushup || 0} 💪</span>
-      <span>${day.situp || 0} 🔥</span>
-      <span class="history-badges">${badges}</span>
-    </span>
-  `;
-  btn.addEventListener("click", () => openDayDetail(dateStr));
-  return btn;
+function renderWeekChart(days, byDate) {
+  const cols = $("chart-cols");
+  cols.innerHTML = "";
+  const maxTotal = Math.max(1, ...days.map((d) => { const t = byDate[d]; return t ? t.pushup + t.situp : 0; }));
+  const todayD = todayStr();
+  days.forEach((d) => {
+    const t = byDate[d] || { pushup: 0, situp: 0 };
+    const total = t.pushup + t.situp;
+    const label = parseDateStr(d).toLocaleDateString(undefined, { weekday: "narrow" });
+    const isToday = d === todayD;
+    const col = document.createElement("div");
+    col.className = "chart-col";
+    if (total === 0) {
+      col.innerHTML = `<div class="chart-stub"></div><span class="chart-day-label ${isToday ? "today" : ""}">${label}</span>`;
+    } else {
+      const situpH = Math.max(2, (t.situp / maxTotal) * 106);
+      const pushupH = Math.max(2, (t.pushup / maxTotal) * 106);
+      col.innerHTML = `
+        <div class="chart-stack">
+          <div class="chart-seg-situp" style="height:${situpH}px"></div>
+          <div class="chart-seg-pushup" style="height:${pushupH}px"></div>
+        </div>
+        <span class="chart-day-label ${isToday ? "today" : ""}">${label}</span>
+      `;
+    }
+    cols.appendChild(col);
+  });
 }
 
-$("btn-load-more").addEventListener("click", () => loadHistory(false));
+function renderPastDays(days, byDate, weightByDate) {
+  const list = $("past-days-list");
+  list.innerHTML = "";
+  // newest first for the list
+  [...days].reverse().forEach((d) => {
+    const t = byDate[d];
+    const hasActivity = !!t && (t.pushup + t.situp) > 0;
+    const weight = weightByDate[d];
+    const row = document.createElement("button");
+    row.className = "day-row";
+    const nameClass = hasActivity ? "" : "rest";
+    const sub = weight != null ? `${weight} lb` : (hasActivity ? "logged" : "rest day");
+    const counts = hasActivity
+      ? `<span class="day-count pushup">${t.pushup}</span><span class="day-count situp">${t.situp}</span>`
+      : `<span class="day-dash">&mdash;</span>`;
+    row.innerHTML = `
+      <div class="day-info">
+        <span class="day-name ${nameClass}">${friendlyDate(d)}</span>
+        <span class="day-sub">${sub}</span>
+      </div>
+      ${counts}
+    `;
+    row.addEventListener("click", () => openDayDetail(d));
+    list.appendChild(row);
+  });
+}
 
 // ---------- Feed tab (shared progress across everyone signed in) ----------
 async function loadFeedTab() {
@@ -413,54 +507,90 @@ async function loadFeedTab() {
     sb.from("activity_entries").select("user_id, entry_date, activity_type, amount, created_at").gte("entry_date", feedStart).order("created_at", { ascending: false }),
   ]);
 
+  const profiles = profilesRes.data || [];
   const names = {};
-  (profilesRes.data || []).forEach((p) => { names[p.user_id] = p.display_name; });
+  profiles.forEach((p) => { names[p.user_id] = p.display_name; });
   const goals = {};
   (settingsRes.data || []).forEach((s) => { goals[s.user_id] = s.pushup_goal; });
   const entries = entriesRes.data || [];
 
-  renderFeedToday(today, entries, names, goals);
+  renderFeedStandings(today, profiles, entries, names, goals);
   renderFeedRecent(entries, names);
 }
 
-function renderFeedToday(today, entries, names, goals) {
-  const totals = {}; // user_id -> {pushup, situp}
+function renderFeedStandings(today, profiles, entries, names, goals) {
+  const myId = state.session.user.id;
+  const totalsByUser = {};
   for (const e of entries) {
     if (e.entry_date !== today) continue;
-    const t = (totals[e.user_id] ??= { pushup: 0, situp: 0 });
+    const t = (totalsByUser[e.user_id] ??= { pushup: 0, situp: 0 });
     t[e.activity_type] += e.amount;
   }
-  // Make sure everyone with a name shows up, even at 0 for today.
-  for (const uid of Object.keys(names)) totals[uid] ??= { pushup: 0, situp: 0 };
 
-  const list = $("feed-today-list");
-  list.innerHTML = "";
-  const userIds = Object.keys(totals).sort((a, b) => (names[a] || "").localeCompare(names[b] || ""));
-  for (const uid of userIds) {
-    const t = totals[uid];
-    const pushupGoal = goals[uid] || 100;
-    const situpGoal = pushupGoal * 2;
-    const li = document.createElement("li");
-    li.className = "feed-person";
-    const isMe = uid === state.session.user.id;
-    li.innerHTML = `
-      <div class="feed-person-name">${names[uid] || "Someone"}${isMe ? " (you)" : ""}</div>
-      <div class="feed-bars">
-        ${feedBarRow("💪", t.pushup, pushupGoal, "")}
-        ${feedBarRow("🔥", t.situp, situpGoal, "situp")}
+  const people = profiles.map((p) => {
+    const totals = totalsByUser[p.user_id] || { pushup: 0, situp: 0 };
+    const goal = goals[p.user_id] || 100;
+    return {
+      id: p.user_id,
+      name: p.display_name || "Someone",
+      isMe: p.user_id === myId,
+      totals,
+      goal,
+      pct: personPct(totals, goal),
+      started: totals.pushup > 0 || totals.situp > 0,
+    };
+  });
+  people.sort((a, b) => (b.isMe - a.isMe) || a.name.localeCompare(b.name));
+
+  // Headline
+  const me = people.find((p) => p.isMe);
+  const others = people.filter((p) => !p.isMe);
+  const anyStarted = people.some((p) => p.started);
+  let headline = "Nobody's started";
+  if (anyStarted && me) {
+    const maxOther = others.length ? Math.max(...others.map((p) => p.pct)) : 0;
+    if (Math.abs(me.pct - maxOther) < 0.001) headline = "Dead even";
+    else headline = me.pct > maxOther ? "You're ahead" : "You're behind";
+  }
+  $("feed-headline").textContent = headline;
+
+  const card = $("feed-standings");
+  card.innerHTML = "";
+  people.forEach((p, i) => {
+    if (i > 0) {
+      const divider = document.createElement("div");
+      divider.className = "standings-divider";
+      card.appendChild(divider);
+    }
+    const block = document.createElement("div");
+    block.className = "standing-person";
+    const initial = (p.name.trim()[0] || "?").toUpperCase();
+    const statusHtml = p.isMe
+      ? `<span class="person-status">YOU</span>`
+      : (p.started ? "" : `<span class="person-status idle">not started</span>`);
+    const situpGoal = p.goal * 2;
+    block.innerHTML = `
+      <div class="person-header">
+        <span class="avatar ${p.isMe ? "me" : ""}">${initial}</span>
+        <span class="person-name ${p.started ? "" : "inactive"}">${p.name}</span>
+        ${statusHtml}
+      </div>
+      <div class="bar-rows">
+        ${feedBarRow(p.totals.pushup, p.goal, "")}
+        ${feedBarRow(p.totals.situp, situpGoal, "situp")}
       </div>
     `;
-    list.appendChild(li);
-  }
+    card.appendChild(block);
+  });
 }
 
-function feedBarRow(label, value, goal, altClass) {
+function feedBarRow(value, goal, altClass) {
   const pct = Math.min(1, goal ? value / goal : 0) * 100;
+  const zero = value === 0 ? "zero" : "";
   return `
-    <div class="feed-bar-row">
-      <span class="feed-bar-label">${label} of ${goal}</span>
-      <span class="feed-bar-track"><span class="feed-bar-fill ${altClass}" style="width:${pct}%"></span></span>
-      <span class="feed-bar-num">${value}</span>
+    <div class="bar-row">
+      <span class="bar-count ${zero}">${value}/${goal}</span>
+      <div class="bar-track"><div class="bar-fill ${altClass}" style="width:${pct}%"></div></div>
     </div>
   `;
 }
@@ -474,16 +604,19 @@ function renderFeedRecent(entries, names) {
   hide(empty);
   for (const entry of recent) {
     const li = document.createElement("li");
+    li.className = "recent-row";
+    const name = names[entry.user_id] || "Someone";
+    const initial = (name.trim()[0] || "?").toUpperCase();
     const time = new Date(entry.created_at).toLocaleString(undefined, {
       weekday: "short", hour: "numeric", minute: "2-digit",
     });
+    const isSitup = entry.activity_type === "situp";
     li.innerHTML = `
-      <span>
-        <span class="entry-person">${names[entry.user_id] || "Someone"}</span>
-        <span class="entry-tag ${entry.activity_type === "situp" ? "situp" : ""}">${entry.activity_type}</span>
-        +${entry.amount}
-        <span class="entry-time">${time}</span>
-      </span>
+      <span class="avatar sm ${entry.user_id === state.session.user.id ? "me" : ""}">${initial}</span>
+      <div class="recent-body">
+        <span class="recent-label">${name} +${entry.amount} ${isSitup ? "sit-ups" : "push-ups"}</span>
+        <span class="recent-time">${time}</span>
+      </div>
     `;
     list.appendChild(li);
   }
@@ -492,13 +625,18 @@ function renderFeedRecent(entries, names) {
 // ---------- Day detail ----------
 async function openDayDetail(dateStr) {
   state.dayDetailDate = dateStr;
+  state.dayDetailExercise = "pushup";
+  $("day-detail-switch").querySelectorAll("button").forEach((b, i) => b.classList.toggle("active", i === 0));
   hide($("tab-history"));
+  hide($("tab-today"));
+  hide($("tab-feed"));
+  hide($("tab-settings"));
   show($("tab-day-detail"));
   await loadDayDetail(dateStr);
 }
 
 async function loadDayDetail(dateStr) {
-  $("day-detail-heading").textContent = friendlyDate(dateStr) + " · " + dateStr;
+  $("day-detail-heading").textContent = `${friendlyDate(dateStr)} · ${dateStr}`;
   const [entries, statusRow] = await Promise.all([
     fetchEntriesForDate(dateStr),
     fetchStatusForDate(dateStr),
@@ -508,6 +646,11 @@ async function loadDayDetail(dateStr) {
   $("day-ate-well-input").checked = !!statusRow?.ate_well;
   $("day-prayed-input").checked = !!statusRow?.prayed;
 }
+
+$("btn-back-history").addEventListener("click", () => {
+  hide($("tab-day-detail"));
+  show($("tab-history"));
+});
 
 $("btn-save-day-status").addEventListener("click", async () => {
   const weight = parseFloat($("day-weight-input").value);
@@ -519,11 +662,30 @@ $("btn-save-day-status").addEventListener("click", async () => {
   if (ok) flashSaved($("day-saved-msg"));
 });
 
-// ---------- Settings tab ----------
-function loadSettingsTab() {
+function flashSaved(el) {
+  show(el);
+  setTimeout(() => hide(el), 1800);
+}
+
+// ---------- Settings tab ("You") ----------
+async function loadSettingsTab() {
   applyGoalToUI();
   $("display-name-input").value = state.displayName;
+  const statusRow = await fetchStatusForDate(todayStr());
+  $("weight-input").value = statusRow?.weight ?? "";
+  $("ate-well-input").checked = !!statusRow?.ate_well;
+  $("prayed-input").checked = !!statusRow?.prayed;
 }
+
+$("btn-save-status").addEventListener("click", async () => {
+  const weight = parseFloat($("weight-input").value);
+  const ok = await saveStatus(todayStr(), {
+    weight: Number.isNaN(weight) ? null : weight,
+    ateWell: $("ate-well-input").checked,
+    prayed: $("prayed-input").checked,
+  });
+  if (ok) flashSaved($("status-saved-msg"));
+});
 
 $("btn-save-name").addEventListener("click", async () => {
   const name = $("display-name-input").value.trim();
