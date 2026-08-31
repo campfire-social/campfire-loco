@@ -93,12 +93,6 @@ function showLoginInfo(msg) {
   show(el);
 }
 
-async function logout() {
-  await sb.auth.signOut();
-}
-$("btn-logout").addEventListener("click", logout);
-$("btn-logout-2").addEventListener("click", logout);
-
 sb.auth.onAuthStateChange((_event, session) => {
   state.session = session;
   if (session) {
