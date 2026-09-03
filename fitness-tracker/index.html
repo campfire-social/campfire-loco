@@ -105,6 +105,26 @@
           <ul class="entry-list" id="today-entries"></ul>
           <p class="muted" id="today-entries-empty">Nothing logged yet today. Get after it.</p>
         </div>
+
+        <div class="card">
+          <span class="card-title">Today's check-in</span>
+          <label class="field">
+            <span>Weight (lb)</span>
+            <input type="number" step="0.1" id="weight-input" placeholder="e.g. 184.2" />
+          </label>
+          <div class="toggle-row">
+            <label class="toggle">
+              <input type="checkbox" id="ate-well-input" />
+              <span>Ate well today</span>
+            </label>
+            <label class="toggle">
+              <input type="checkbox" id="prayed-input" />
+              <span>Prayed today</span>
+            </label>
+          </div>
+          <button id="btn-save-status" class="btn btn-primary btn-block">Save check-in</button>
+          <p id="status-saved-msg" class="saved-msg hidden">Saved</p>
+        </div>
       </div>
 
       <!-- FEED -->
@@ -238,26 +258,6 @@
           <p class="muted">Sit-up goal is always double your push-up goal (<span id="situp-goal-preview">200</span>/day).</p>
           <button id="btn-save-goal" class="btn btn-primary btn-block">Save goal</button>
           <p id="goal-saved-msg" class="saved-msg hidden">Saved</p>
-        </div>
-
-        <div class="card">
-          <span class="card-title">Today's check-in</span>
-          <label class="field">
-            <span>Weight (lb)</span>
-            <input type="number" step="0.1" id="weight-input" placeholder="e.g. 184.2" />
-          </label>
-          <div class="toggle-row">
-            <label class="toggle">
-              <input type="checkbox" id="ate-well-input" />
-              <span>Ate well today</span>
-            </label>
-            <label class="toggle">
-              <input type="checkbox" id="prayed-input" />
-              <span>Prayed today</span>
-            </label>
-          </div>
-          <button id="btn-save-status" class="btn btn-primary btn-block">Save check-in</button>
-          <p id="status-saved-msg" class="saved-msg hidden">Saved</p>
         </div>
 
         <div class="card">

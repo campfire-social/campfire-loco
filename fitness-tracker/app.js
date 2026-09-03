@@ -325,9 +325,10 @@ async function loadTodayTab() {
     weekday: "long", month: "short", day: "numeric",
   }).toUpperCase();
 
-  const [rangeRows, entries] = await Promise.all([
+  const [rangeRows, entries, statusRow] = await Promise.all([
     fetchOwnEntriesRange(toDateStr(addDays(new Date(), -90)), today),
     fetchEntriesForDate(today),
+    fetchStatusForDate(today),
   ]);
   const byDate = groupByDate(rangeRows);
   const todayTotals = byDate[today] || { pushup: 0, situp: 0 };
@@ -337,6 +338,10 @@ async function loadTodayTab() {
   $("today-headline").textContent = todayHeadline(personPct(todayTotals, state.pushupGoal));
 
   renderTodayLog(entries);
+
+  $("weight-input").value = statusRow?.weight ?? "";
+  $("ate-well-input").checked = !!statusRow?.ate_well;
+  $("prayed-input").checked = !!statusRow?.prayed;
 }
 
 function renderRings(totals) {
@@ -682,13 +687,9 @@ function flashSaved(el) {
 }
 
 // ---------- Settings tab ("You") ----------
-async function loadSettingsTab() {
+function loadSettingsTab() {
   applyGoalToUI();
   $("display-name-input").value = state.displayName;
-  const statusRow = await fetchStatusForDate(todayStr());
-  $("weight-input").value = statusRow?.weight ?? "";
-  $("ate-well-input").checked = !!statusRow?.ate_well;
-  $("prayed-input").checked = !!statusRow?.prayed;
 }
 
 $("btn-save-status").addEventListener("click", async () => {
