@@ -7,6 +7,8 @@ function toDateStr(d) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pa
 function parseDateStr(s) { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); }
 function todayStr() { return toDateStr(new Date()); }
 function addDays(d, delta) { const nd = new Date(d); nd.setDate(nd.getDate() + delta); return nd; }
+function startOfMonthStr(d = new Date()) { return toDateStr(new Date(d.getFullYear(), d.getMonth(), 1)); }
+function startOfYearStr(d = new Date()) { return toDateStr(new Date(d.getFullYear(), 0, 1)); }
 function friendlyDate(dateStr) {
   const d = parseDateStr(dateStr);
   const today = todayStr();
@@ -229,6 +231,14 @@ async function fetchLatestWeight() {
   return data;
 }
 
+// Summed server-side (via get_activity_totals) so a whole year of entries
+// never has to be downloaded just to add them up.
+async function fetchTotalReps(startDate, endDate) {
+  const { data, error } = await sb.rpc("get_activity_totals", { p_start: startDate, p_end: endDate });
+  if (error) { console.error(error); return 0; }
+  return (data || []).reduce((sum, row) => sum + Number(row.total), 0);
+}
+
 async function fetchStatusRange(startDate, endDate) {
   const uid = state.session.user.id;
   const { data, error } = await sb
@@ -413,10 +423,12 @@ async function loadHistoryTab() {
   const startStr = toDateStr(start);
   const endStr = toDateStr(today);
 
-  const [rows, statusRows, latestWeight] = await Promise.all([
+  const [rows, statusRows, latestWeight, monthReps, yearReps] = await Promise.all([
     fetchOwnEntriesRange(startStr, endStr),
     fetchStatusRange(startStr, endStr),
     fetchLatestWeight(),
+    fetchTotalReps(startOfMonthStr(), endStr),
+    fetchTotalReps(startOfYearStr(), endStr),
   ]);
   const byDate = groupByDate(rows);
   const weightByDate = {};
@@ -432,7 +444,9 @@ async function loadHistoryTab() {
     if (t) { repsTotal += t.pushup + t.situp; if (t.pushup + t.situp > 0) daysLogged++; }
   });
 
-  $("week-reps-total").textContent = repsTotal;
+  $("stat-week-reps").textContent = repsTotal;
+  $("stat-month-reps").textContent = monthReps;
+  $("stat-year-reps").textContent = yearReps;
   $("stat-days-logged").textContent = `${daysLogged}/7`;
   $("stat-weight").textContent = latestWeight ? latestWeight.weight : "—";
 

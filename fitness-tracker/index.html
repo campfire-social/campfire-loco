@@ -126,11 +126,26 @@
       <!-- HISTORY -->
       <div id="tab-history" class="tab-panel hidden">
         <div style="display:flex; flex-direction:column; gap:2px; padding:0 4px">
-          <span class="eyebrow">Last 7 days</span>
-          <div class="reps-total">
-            <span class="reps-num" id="week-reps-total">0</span>
-            <span class="reps-word">reps</span>
+          <span class="eyebrow">Totals</span>
+        </div>
+
+        <div class="stat-pair" id="totals-row">
+          <div class="card stat-card">
+            <span class="stat-value" id="stat-week-reps">0</span>
+            <span class="stat-label">reps this week</span>
           </div>
+          <div class="card stat-card">
+            <span class="stat-value" id="stat-month-reps">0</span>
+            <span class="stat-label">reps this month</span>
+          </div>
+          <div class="card stat-card">
+            <span class="stat-value" id="stat-year-reps">0</span>
+            <span class="stat-label">reps this year</span>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:2px; padding:0 4px">
+          <span class="eyebrow">Last 7 days</span>
         </div>
 
         <div class="card chart-card">

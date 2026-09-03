@@ -536,9 +536,13 @@ button, input {
 .legend-label { font-size: 12px; color: var(--fg-muted); }
 
 .stat-pair { display: flex; gap: 10px; }
-.stat-card { flex: 1; gap: 2px; }
+.stat-card { flex: 1; gap: 2px; padding: 16px 14px; }
 .stat-value { font-family: var(--font-sans); font-weight: 600; letter-spacing: -0.02em; font-size: 26px; line-height: 1; }
 .stat-label { font-size: 12px; color: var(--fg-muted); }
+
+#totals-row .stat-card { padding: 14px 10px; }
+#totals-row .stat-value { font-size: 22px; }
+#totals-row .stat-label { font-size: 11px; }
 
 .day-row {
   display: flex;
