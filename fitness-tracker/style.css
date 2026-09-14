@@ -522,6 +522,25 @@ button, input {
 .chart-cols { display: flex; align-items: flex-end; gap: 9px; height: 106px; }
 .chart-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; justify-content: flex-end; height: 100%; }
 .chart-stub { width: 100%; height: 6px; background: var(--track); }
+
+.chart-rest-block {
+  width: 100%;
+  height: 106px;
+  background: var(--track);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.chart-rest-text {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--fg-soft);
+}
+
 .chart-stack { width: 100%; display: flex; flex-direction: column; gap: 2px; }
 .chart-seg-situp { width: 100%; background: var(--fg); }
 .chart-seg-pushup { width: 100%; background: var(--accent); }

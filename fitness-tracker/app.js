@@ -482,7 +482,12 @@ function renderWeekChart(days, byDate) {
     const isToday = d === todayD;
     const col = document.createElement("div");
     col.className = "chart-col";
-    if (total === 0) {
+    if (total === 0 && isRestDay(parseDateStr(d))) {
+      col.innerHTML = `
+        <div class="chart-rest-block"><span class="chart-rest-text">Rest</span></div>
+        <span class="chart-day-label ${isToday ? "today" : ""}">${label}</span>
+      `;
+    } else if (total === 0) {
       col.innerHTML = `<div class="chart-stub"></div><span class="chart-day-label ${isToday ? "today" : ""}">${label}</span>`;
     } else {
       const situpH = Math.max(2, (t.situp / maxTotal) * 106);
