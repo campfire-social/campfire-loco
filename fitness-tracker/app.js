@@ -288,17 +288,28 @@ function goalsMetOn(dateStr, byDate, pushupGoal) {
   return day.pushup >= pushupGoal && day.situp >= pushupGoal * 2;
 }
 
+// Sundays are a scheduled rest day: they neither extend nor break the
+// streak, so the count from the week before just carries straight through
+// to Monday.
+function isRestDay(d) { return d.getDay() === 0; }
+
 function computeStreak(byDate, pushupGoal) {
+  const todayDateStr = todayStr();
   let streak = 0;
   let cursor = new Date();
-  if (goalsMetOn(toDateStr(cursor), byDate, pushupGoal)) {
-    streak++;
-    cursor = addDays(cursor, -1);
-  } else {
-    cursor = addDays(cursor, -1);
-  }
-  while (goalsMetOn(toDateStr(cursor), byDate, pushupGoal)) {
-    streak++;
+
+  while (true) {
+    if (isRestDay(cursor)) {
+      cursor = addDays(cursor, -1);
+      continue;
+    }
+    const dateStr = toDateStr(cursor);
+    if (goalsMetOn(dateStr, byDate, pushupGoal)) {
+      streak++;
+    } else if (dateStr !== todayDateStr) {
+      // A miss on any day other than today (which isn't over yet) ends the streak.
+      break;
+    }
     cursor = addDays(cursor, -1);
   }
   return streak;
