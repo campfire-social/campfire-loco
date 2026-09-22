@@ -594,6 +594,18 @@ button, input {
 .toggle { display: flex; align-items: center; gap: 10px; font-size: 14px; }
 .toggle input { width: 20px; height: 20px; accent-color: var(--accent); }
 
+.compliment-row { display: flex; gap: 8px; margin: 6px 0 4px; }
+.compliment-box {
+  flex: 1;
+  height: 44px;
+  background: var(--track);
+  border: 1px solid var(--rule);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.compliment-box:active { transform: scale(0.95); }
+.compliment-box.filled { background: var(--accent); border-color: var(--accent); }
+
 .saved-msg { color: var(--accent); font-weight: 700; font-size: 13px; margin: 4px 0 0; }
 
 /* ---------- Day detail ---------- */

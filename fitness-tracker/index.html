@@ -107,6 +107,19 @@
         </div>
 
         <div class="card">
+          <span class="card-title">Compliments</span>
+          <p class="muted" id="compliments-subtitle">For your wife today</p>
+          <div class="compliment-row" id="compliment-row">
+            <button type="button" class="compliment-box" data-index="1" aria-label="1 compliment"></button>
+            <button type="button" class="compliment-box" data-index="2" aria-label="2 compliments"></button>
+            <button type="button" class="compliment-box" data-index="3" aria-label="3 compliments"></button>
+            <button type="button" class="compliment-box" data-index="4" aria-label="4 compliments"></button>
+            <button type="button" class="compliment-box" data-index="5" aria-label="5 compliments"></button>
+          </div>
+          <p class="muted" id="compliments-count">0 of 5 today</p>
+        </div>
+
+        <div class="card">
           <span class="card-title">Today's check-in</span>
           <label class="field">
             <span>Weight (lb)</span>
@@ -231,6 +244,14 @@
               <span>Prayed</span>
             </label>
           </div>
+          <span>Compliments</span>
+          <div class="compliment-row" id="day-compliment-row">
+            <button type="button" class="compliment-box" data-index="1" aria-label="1 compliment"></button>
+            <button type="button" class="compliment-box" data-index="2" aria-label="2 compliments"></button>
+            <button type="button" class="compliment-box" data-index="3" aria-label="3 compliments"></button>
+            <button type="button" class="compliment-box" data-index="4" aria-label="4 compliments"></button>
+            <button type="button" class="compliment-box" data-index="5" aria-label="5 compliments"></button>
+          </div>
           <button id="btn-save-day-status" class="btn btn-primary btn-block">Save</button>
           <p id="day-saved-msg" class="saved-msg hidden">Saved</p>
         </div>
@@ -244,6 +265,10 @@
           <label class="field">
             <span>Display name</span>
             <input type="text" id="display-name-input" maxlength="40" placeholder="e.g. Mack" />
+          </label>
+          <label class="field">
+            <span>Spouse's name</span>
+            <input type="text" id="spouse-name-input" maxlength="40" placeholder="e.g. Jess" />
           </label>
           <button id="btn-save-name" class="btn btn-primary btn-block">Save name</button>
           <p id="name-saved-msg" class="saved-msg hidden">Saved</p>

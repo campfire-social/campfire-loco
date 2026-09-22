@@ -25,9 +25,12 @@ const state = {
   session: null,
   pushupGoal: 100,
   displayName: "",
+  spouseName: "",
   todayExercise: "pushup",
   dayDetailExercise: "pushup",
   dayDetailDate: null,
+  todayCompliments: 0,
+  dayDetailCompliments: 0,
 };
 
 // ---------- Small DOM helpers ----------
@@ -154,7 +157,11 @@ async function ensureProfile() {
   const uid = state.session.user.id;
   const { data, error } = await sb.from("profiles").select("*").eq("user_id", uid).maybeSingle();
   if (error) { console.error(error); return; }
-  if (data) { state.displayName = data.display_name; return; }
+  if (data) {
+    state.displayName = data.display_name;
+    state.spouseName = data.spouse_name || "";
+    return;
+  }
   const fallback = state.session.user.email.split("@")[0];
   const name = prompt("What's your name? (Shown to others in the shared feed)", fallback) || fallback;
   const { error: insErr } = await sb.from("profiles").insert({ user_id: uid, display_name: name });
@@ -264,20 +271,32 @@ async function deleteEntry(id) {
   if (error) console.error(error);
 }
 
-async function saveStatus(dateStr, { weight, ateWell, prayed }) {
+async function saveStatus(dateStr, { weight, ateWell, prayed, compliments }) {
+  const uid = state.session.user.id;
+  const row = {
+    user_id: uid,
+    entry_date: dateStr,
+    weight: weight === "" || weight === null || Number.isNaN(weight) ? null : weight,
+    ate_well: ateWell,
+    prayed: prayed,
+    updated_at: new Date().toISOString(),
+  };
+  if (compliments !== undefined) row.compliments = compliments;
+  const { error } = await sb.from("daily_status").upsert(row, { onConflict: "user_id,entry_date" });
+  if (error) { console.error(error); alert("Couldn't save check-in, try again."); }
+  return !error;
+}
+
+// Compliments are saved the moment a box is tapped (not via the Save
+// check-in button), so they get their own tiny partial upsert that never
+// touches weight/ate_well/prayed.
+async function updateCompliments(dateStr, count) {
   const uid = state.session.user.id;
   const { error } = await sb.from("daily_status").upsert(
-    {
-      user_id: uid,
-      entry_date: dateStr,
-      weight: weight === "" || weight === null || Number.isNaN(weight) ? null : weight,
-      ate_well: ateWell,
-      prayed: prayed,
-      updated_at: new Date().toISOString(),
-    },
+    { user_id: uid, entry_date: dateStr, compliments: count, updated_at: new Date().toISOString() },
     { onConflict: "user_id,entry_date" }
   );
-  if (error) { console.error(error); alert("Couldn't save check-in, try again."); }
+  if (error) console.error(error);
   return !error;
 }
 
@@ -353,6 +372,11 @@ async function loadTodayTab() {
   $("weight-input").value = statusRow?.weight ?? "";
   $("ate-well-input").checked = !!statusRow?.ate_well;
   $("prayed-input").checked = !!statusRow?.prayed;
+
+  state.todayCompliments = statusRow?.compliments ?? 0;
+  renderComplimentBoxes("compliment-row", state.todayCompliments);
+  $("compliments-count").textContent = `${state.todayCompliments} of 5 today`;
+  $("compliments-subtitle").textContent = state.spouseName ? `For ${state.spouseName} today` : "For your wife today";
 }
 
 function renderRings(totals) {
@@ -367,6 +391,40 @@ function renderRings(totals) {
   $("ring-pushup").style.strokeDasharray = `${pushupPct * RING_CIRC} ${RING_CIRC}`;
   $("ring-situp").style.strokeDasharray = `${situpPct * RING_CIRC} ${RING_CIRC}`;
 }
+
+// ---------- Compliments (5 progressive-fill boxes) ----------
+function renderComplimentBoxes(rowId, count) {
+  document.querySelectorAll(`#${rowId} .compliment-box`).forEach((box) => {
+    const idx = parseInt(box.dataset.index, 10);
+    box.classList.toggle("filled", idx <= count);
+  });
+}
+
+function wireComplimentRow(rowId, countLabelId, onChange) {
+  $(rowId).addEventListener("click", (e) => {
+    const box = e.target.closest(".compliment-box");
+    if (!box) return;
+    const idx = parseInt(box.dataset.index, 10);
+    const current = onChange.get();
+    const next = idx === current ? idx - 1 : idx;
+    onChange.set(next);
+    renderComplimentBoxes(rowId, next);
+    if (countLabelId) $(countLabelId).textContent = `${next} of 5 today`;
+  });
+}
+
+wireComplimentRow("compliment-row", "compliments-count", {
+  get: () => state.todayCompliments,
+  set: (v) => {
+    state.todayCompliments = v;
+    updateCompliments(todayStr(), v);
+  },
+});
+
+wireComplimentRow("day-compliment-row", null, {
+  get: () => state.dayDetailCompliments,
+  set: (v) => { state.dayDetailCompliments = v; },
+});
 
 function renderTodayLog(entries) {
   $("today-log-count").textContent = `${entries.length} SET${entries.length === 1 ? "" : "S"}`;
@@ -680,6 +738,9 @@ async function loadDayDetail(dateStr) {
   $("day-weight-input").value = statusRow?.weight ?? "";
   $("day-ate-well-input").checked = !!statusRow?.ate_well;
   $("day-prayed-input").checked = !!statusRow?.prayed;
+
+  state.dayDetailCompliments = statusRow?.compliments ?? 0;
+  renderComplimentBoxes("day-compliment-row", state.dayDetailCompliments);
 }
 
 $("btn-back-history").addEventListener("click", () => {
@@ -693,6 +754,7 @@ $("btn-save-day-status").addEventListener("click", async () => {
     weight: Number.isNaN(weight) ? null : weight,
     ateWell: $("day-ate-well-input").checked,
     prayed: $("day-prayed-input").checked,
+    compliments: state.dayDetailCompliments,
   });
   if (ok) flashSaved($("day-saved-msg"));
 });
@@ -706,6 +768,7 @@ function flashSaved(el) {
 function loadSettingsTab() {
   applyGoalToUI();
   $("display-name-input").value = state.displayName;
+  $("spouse-name-input").value = state.spouseName;
 }
 
 $("btn-save-status").addEventListener("click", async () => {
@@ -721,13 +784,15 @@ $("btn-save-status").addEventListener("click", async () => {
 $("btn-save-name").addEventListener("click", async () => {
   const name = $("display-name-input").value.trim();
   if (!name) return;
+  const spouseName = $("spouse-name-input").value.trim();
   const uid = state.session.user.id;
   const { error } = await sb.from("profiles").upsert(
-    { user_id: uid, display_name: name },
+    { user_id: uid, display_name: name, spouse_name: spouseName || null },
     { onConflict: "user_id" }
   );
   if (error) { console.error(error); return; }
   state.displayName = name;
+  state.spouseName = spouseName;
   flashSaved($("name-saved-msg"));
 });
 
