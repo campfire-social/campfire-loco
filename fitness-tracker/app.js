@@ -173,6 +173,7 @@ $("group-switch").addEventListener("click", async (e) => {
   if (groupId === state.activeGroupId) return;
   state.activeGroupId = groupId;
   renderGroupSwitch();
+  loadFeedTab();
   const uid = state.session.user.id;
   const { error } = await sb.from("profiles").update({ active_group_id: groupId }).eq("user_id", uid);
   if (error) console.error(error);
@@ -677,9 +678,7 @@ async function loadFeedTab() {
   const today = todayStr();
   const feedStart = toDateStr(addDays(new Date(), -2)); // today + 2 prior days
 
-  $("feed-eyebrow").textContent = state.myGroups.length > 1
-    ? `${state.myGroups.find((g) => g.id === state.activeGroupId)?.name || ""} · Today`
-    : "Today";
+  renderGroupSwitch();
 
   if (!state.activeGroupId) {
     renderFeedStandings(today, [], [], {}, {}, {});
