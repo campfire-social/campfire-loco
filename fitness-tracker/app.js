@@ -653,6 +653,17 @@ async function loadFeedTab() {
   renderFeedRecent(entries, names);
 }
 
+// Team-spirited, not head-to-head: nobody gets called out as "ahead" or
+// "behind" someone else, it just reads the room on how the group is doing.
+function teamHeadline(people) {
+  const anyStarted = people.some((p) => p.started);
+  if (!anyStarted) return "Let's get moving";
+  const avgPct = people.reduce((sum, p) => sum + p.pct, 0) / people.length;
+  if (avgPct >= 1) return "Everybody crushed it today";
+  if (avgPct >= 0.66) return "Almost there together";
+  return "Keep pushing each other";
+}
+
 function renderFeedStandings(today, profiles, entries, names, goals) {
   const myId = state.session.user.id;
   const totalsByUser = {};
@@ -677,17 +688,7 @@ function renderFeedStandings(today, profiles, entries, names, goals) {
   });
   people.sort((a, b) => (b.isMe - a.isMe) || a.name.localeCompare(b.name));
 
-  // Headline
-  const me = people.find((p) => p.isMe);
-  const others = people.filter((p) => !p.isMe);
-  const anyStarted = people.some((p) => p.started);
-  let headline = "Nobody's started";
-  if (anyStarted && me) {
-    const maxOther = others.length ? Math.max(...others.map((p) => p.pct)) : 0;
-    if (Math.abs(me.pct - maxOther) < 0.001) headline = "Dead even";
-    else headline = me.pct > maxOther ? "You're ahead" : "You're behind";
-  }
-  $("feed-headline").textContent = headline;
+  $("feed-headline").textContent = teamHeadline(people);
 
   const card = $("feed-standings");
   card.innerHTML = "";
