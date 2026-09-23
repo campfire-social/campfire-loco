@@ -636,10 +636,11 @@ async function loadFeedTab() {
   const today = todayStr();
   const feedStart = toDateStr(addDays(new Date(), -2)); // today + 2 prior days
 
-  const [profilesRes, settingsRes, entriesRes] = await Promise.all([
+  const [profilesRes, settingsRes, entriesRes, complimentsRes] = await Promise.all([
     sb.from("profiles").select("user_id, display_name"),
     sb.from("settings").select("user_id, pushup_goal"),
     sb.from("activity_entries").select("user_id, entry_date, activity_type, amount, created_at").gte("entry_date", feedStart).order("created_at", { ascending: false }),
+    sb.from("compliments_feed").select("user_id, compliments").eq("entry_date", today),
   ]);
 
   const profiles = profilesRes.data || [];
@@ -648,8 +649,10 @@ async function loadFeedTab() {
   const goals = {};
   (settingsRes.data || []).forEach((s) => { goals[s.user_id] = s.pushup_goal; });
   const entries = entriesRes.data || [];
+  const complimentsByUser = {};
+  (complimentsRes.data || []).forEach((c) => { complimentsByUser[c.user_id] = c.compliments; });
 
-  renderFeedStandings(today, profiles, entries, names, goals);
+  renderFeedStandings(today, profiles, entries, names, goals, complimentsByUser);
   renderFeedRecent(entries, names);
 }
 
@@ -664,7 +667,7 @@ function teamHeadline(people) {
   return "Keep pushing each other";
 }
 
-function renderFeedStandings(today, profiles, entries, names, goals) {
+function renderFeedStandings(today, profiles, entries, names, goals, complimentsByUser) {
   const myId = state.session.user.id;
   const totalsByUser = {};
   for (const e of entries) {
@@ -715,6 +718,7 @@ function renderFeedStandings(today, profiles, entries, names, goals) {
         ${feedBarRow(p.totals.pushup, p.goal, "")}
         ${feedBarRow(p.totals.situp, situpGoal, "situp")}
       </div>
+      <div class="compliments-mini">${complimentsByUser[p.id] ?? 0} of 5 compliments today</div>
     `;
     card.appendChild(block);
   });
