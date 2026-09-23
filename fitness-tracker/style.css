@@ -357,7 +357,33 @@ button, input {
 }
 
 .ring-goal { font-size: 11px; color: var(--fg-muted); }
+.ring-goal-complete {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
 .ring-name { font-size: 13px; font-weight: 600; }
+
+@keyframes pop-bounce {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.16); }
+  65% { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+.pop { animation: pop-bounce 420ms var(--ease-out); }
+
+@keyframes glow-pulse-accent {
+  0%, 100% { filter: drop-shadow(0 0 0 transparent); }
+  50% { filter: drop-shadow(0 0 6px var(--accent)); }
+}
+@keyframes glow-pulse-fg {
+  0%, 100% { filter: drop-shadow(0 0 0 transparent); }
+  50% { filter: drop-shadow(0 0 6px var(--fg)); }
+}
+.ring-value.pushup.complete { animation: glow-pulse-accent 1.8s ease-in-out infinite; }
+.ring-value.situp.complete { animation: glow-pulse-fg 1.8s ease-in-out infinite; }
 
 /* ---------- Quick-add card ---------- */
 
@@ -605,6 +631,18 @@ button, input {
 }
 .compliment-box:active { transform: scale(0.95); }
 .compliment-box.filled { background: var(--accent); border-color: var(--accent); }
+.compliment-box.pop { animation: pop-bounce 420ms var(--ease-out); }
+
+@keyframes celebrate-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(182, 69, 0, 0); }
+  50% { box-shadow: 0 0 0 6px rgba(182, 69, 0, 0.35); }
+}
+.compliment-box.filled.celebrate { animation: celebrate-pulse 900ms ease-in-out 2; }
+
+#compliments-count.celebrate {
+  color: var(--accent);
+  font-weight: 700;
+}
 
 .saved-msg { color: var(--accent); font-weight: 700; font-size: 13px; margin: 4px 0 0; }
 

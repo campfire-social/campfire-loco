@@ -55,27 +55,29 @@
 
         <div class="card rings-card">
           <div class="ring-col">
-            <div class="ring-wrap">
+            <div class="ring-wrap" id="ring-pushup-wrap">
               <svg viewBox="0 0 120 120">
                 <circle class="ring-track" cx="60" cy="60" r="52"></circle>
                 <circle class="ring-value pushup" id="ring-pushup" cx="60" cy="60" r="52"></circle>
               </svg>
               <div class="ring-center">
                 <span class="ring-count" id="today-pushups">0</span>
-                <span class="ring-goal">of <span id="goal-pushups">100</span></span>
+                <span class="ring-goal" id="ring-pushup-goal">of <span id="goal-pushups">100</span></span>
+                <span class="ring-goal-complete hidden" id="ring-pushup-complete">Goal complete!</span>
               </div>
             </div>
             <span class="ring-name">Push-ups</span>
           </div>
           <div class="ring-col">
-            <div class="ring-wrap">
+            <div class="ring-wrap" id="ring-situp-wrap">
               <svg viewBox="0 0 120 120">
                 <circle class="ring-track" cx="60" cy="60" r="52"></circle>
                 <circle class="ring-value situp" id="ring-situp" cx="60" cy="60" r="52"></circle>
               </svg>
               <div class="ring-center">
                 <span class="ring-count" id="today-situps">0</span>
-                <span class="ring-goal">of <span id="goal-situps">200</span></span>
+                <span class="ring-goal" id="ring-situp-goal">of <span id="goal-situps">200</span></span>
+                <span class="ring-goal-complete hidden" id="ring-situp-complete">Goal complete!</span>
               </div>
             </div>
             <span class="ring-name">Sit-ups</span>
@@ -97,9 +99,9 @@
           </div>
         </div>
 
-        <div class="card">
-          <span class="card-title">Compliments</span>
-          <p class="muted" id="compliments-subtitle">For your wife today</p>
+        <div class="card" id="compliments-card">
+          <span class="card-title">Compliments &amp; Thankfulness</span>
+          <p class="muted" id="compliments-subtitle">Notice her glory today</p>
           <div class="compliment-row" id="compliment-row">
             <button type="button" class="compliment-box" data-index="1" aria-label="1 compliment"></button>
             <button type="button" class="compliment-box" data-index="2" aria-label="2 compliments"></button>

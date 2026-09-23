@@ -31,6 +31,8 @@ const state = {
   dayDetailDate: null,
   todayCompliments: 0,
   dayDetailCompliments: 0,
+  pushupComplete: false,
+  situpComplete: false,
 };
 
 // ---------- Small DOM helpers ----------
@@ -375,8 +377,18 @@ async function loadTodayTab() {
 
   state.todayCompliments = statusRow?.compliments ?? 0;
   renderComplimentBoxes("compliment-row", state.todayCompliments);
-  $("compliments-count").textContent = `${state.todayCompliments} of 5 today`;
-  $("compliments-subtitle").textContent = state.spouseName ? `For ${state.spouseName} today` : "For your wife today";
+  setComplimentsCount($("compliments-count"), state.todayCompliments);
+  $("compliments-subtitle").textContent = state.spouseName
+    ? `Notice ${state.spouseName}'s glory today`
+    : "Notice her glory today";
+}
+
+// Restarts a CSS animation on an element even if it's already applied.
+function triggerPop(el) {
+  if (!el) return;
+  el.classList.remove("pop");
+  void el.offsetWidth;
+  el.classList.add("pop");
 }
 
 function renderRings(totals) {
@@ -390,13 +402,42 @@ function renderRings(totals) {
   const situpPct = Math.min(1, totals.situp / situpGoal);
   $("ring-pushup").style.strokeDasharray = `${pushupPct * RING_CIRC} ${RING_CIRC}`;
   $("ring-situp").style.strokeDasharray = `${situpPct * RING_CIRC} ${RING_CIRC}`;
+
+  updateRingCompletion("pushup", totals.pushup >= pushupGoal);
+  updateRingCompletion("situp", totals.situp >= situpGoal);
+}
+
+// Swaps the ring's "of X" caption for a "Goal complete!" one, with a glow
+// on the ring and a one-time pop the moment it's actually crossed, rather
+// than every time the tab re-renders.
+function updateRingCompletion(kind, isComplete) {
+  const wasComplete = state[`${kind}Complete`];
+  $(`ring-${kind}`).classList.toggle("complete", isComplete);
+  $(`ring-${kind}-goal`).classList.toggle("hidden", isComplete);
+  $(`ring-${kind}-complete`).classList.toggle("hidden", !isComplete);
+  if (isComplete && !wasComplete) {
+    triggerPop($(`ring-${kind}-wrap`));
+  }
+  state[`${kind}Complete`] = isComplete;
 }
 
 // ---------- Compliments (5 progressive-fill boxes) ----------
+function complimentsCountText(count) {
+  return count >= 5 ? "5 of 5 — she felt it today." : `${count} of 5 today`;
+}
+
+function setComplimentsCount(labelEl, count) {
+  if (!labelEl) return;
+  labelEl.textContent = complimentsCountText(count);
+  labelEl.classList.toggle("celebrate", count >= 5);
+}
+
 function renderComplimentBoxes(rowId, count) {
   document.querySelectorAll(`#${rowId} .compliment-box`).forEach((box) => {
     const idx = parseInt(box.dataset.index, 10);
-    box.classList.toggle("filled", idx <= count);
+    const filled = idx <= count;
+    box.classList.toggle("filled", filled);
+    box.classList.toggle("celebrate", filled && count >= 5);
   });
 }
 
@@ -409,7 +450,8 @@ function wireComplimentRow(rowId, countLabelId, onChange) {
     const next = idx === current ? idx - 1 : idx;
     onChange.set(next);
     renderComplimentBoxes(rowId, next);
-    if (countLabelId) $(countLabelId).textContent = `${next} of 5 today`;
+    triggerPop(box);
+    if (countLabelId) setComplimentsCount($(countLabelId), next);
   });
 }
 
