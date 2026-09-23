@@ -620,15 +620,24 @@ button, input {
 .toggle { display: flex; align-items: center; gap: 10px; font-size: 14px; }
 .toggle input { width: 20px; height: 20px; accent-color: var(--accent); }
 
-.compliment-row { display: flex; gap: 8px; margin: 6px 0 4px; }
+.compliments-title { font-size: 20px; font-weight: 800; }
+#compliments-subtitle { font-style: italic; }
+
+.compliment-row { display: flex; align-items: flex-end; gap: 8px; margin: 6px 0 4px; }
 .compliment-box {
   flex: 1;
-  height: 44px;
+  height: 40px;
   background: var(--track);
   border: 1px solid var(--rule);
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
+/* Each box a touch bigger than the last, left to right. */
+.compliment-box:nth-child(1) { flex-grow: 0.88; height: 38px; }
+.compliment-box:nth-child(2) { flex-grow: 0.94; height: 41px; }
+.compliment-box:nth-child(3) { flex-grow: 1; height: 44px; }
+.compliment-box:nth-child(4) { flex-grow: 1.06; height: 47px; }
+.compliment-box:nth-child(5) { flex-grow: 1.12; height: 50px; }
 .compliment-box:active { transform: scale(0.95); }
 .compliment-box.filled { background: var(--accent); border-color: var(--accent); }
 .compliment-box.pop { animation: pop-bounce 420ms var(--ease-out); }

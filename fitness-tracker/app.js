@@ -379,8 +379,8 @@ async function loadTodayTab() {
   renderComplimentBoxes("compliment-row", state.todayCompliments);
   setComplimentsCount($("compliments-count"), state.todayCompliments);
   $("compliments-subtitle").textContent = state.spouseName
-    ? `Notice ${state.spouseName}'s glory today`
-    : "Notice her glory today";
+    ? `Goal: To notice ${state.spouseName}'s glory!`
+    : "Goal: To notice her glory!";
 }
 
 // Restarts a CSS animation on an element even if it's already applied.
