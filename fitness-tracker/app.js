@@ -33,6 +33,8 @@ const state = {
   dayDetailCompliments: 0,
   pushupComplete: false,
   situpComplete: false,
+  myGroups: [],
+  activeGroupId: null,
 };
 
 // ---------- Small DOM helpers ----------
@@ -132,11 +134,49 @@ function switchTab(name) {
 // ---------- Boot ----------
 async function bootApp() {
   $("account-email").textContent = state.session.user.email;
-  await Promise.all([ensureSettings(), ensureProfile()]);
+  await Promise.all([ensureSettings(), ensureProfile(), loadGroups()]);
+  if (!state.activeGroupId || !state.myGroups.some((g) => g.id === state.activeGroupId)) {
+    state.activeGroupId = state.myGroups[0]?.id || null;
+  }
   applyGoalToUI();
+  renderGroupSwitch();
   switchTab("today");
   registerServiceWorker();
 }
+
+// Only people in more than one group (currently just the account owner)
+// ever see a toggle -- everyone else just has their one group.
+async function loadGroups() {
+  const uid = state.session.user.id;
+  const { data, error } = await sb
+    .from("group_members")
+    .select("group_id, groups(name)")
+    .eq("user_id", uid);
+  if (error) { console.error(error); state.myGroups = []; return; }
+  state.myGroups = (data || []).map((r) => ({ id: r.group_id, name: r.groups?.name || r.group_id }));
+}
+
+function renderGroupSwitch() {
+  const card = $("group-switch-card");
+  if (state.myGroups.length < 2) { hide(card); return; }
+  show(card);
+  const switchEl = $("group-switch");
+  switchEl.innerHTML = state.myGroups
+    .map((g) => `<button type="button" data-group-id="${g.id}" class="${g.id === state.activeGroupId ? "active" : ""}">${g.name}</button>`)
+    .join("");
+}
+
+$("group-switch").addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-group-id]");
+  if (!btn) return;
+  const groupId = btn.dataset.groupId;
+  if (groupId === state.activeGroupId) return;
+  state.activeGroupId = groupId;
+  renderGroupSwitch();
+  const uid = state.session.user.id;
+  const { error } = await sb.from("profiles").update({ active_group_id: groupId }).eq("user_id", uid);
+  if (error) console.error(error);
+});
 
 async function ensureSettings() {
   const uid = state.session.user.id;
@@ -162,6 +202,7 @@ async function ensureProfile() {
   if (data) {
     state.displayName = data.display_name;
     state.spouseName = data.spouse_name || "";
+    state.activeGroupId = data.active_group_id || null;
     return;
   }
   const fallback = state.session.user.email.split("@")[0];
@@ -636,11 +677,28 @@ async function loadFeedTab() {
   const today = todayStr();
   const feedStart = toDateStr(addDays(new Date(), -2)); // today + 2 prior days
 
+  $("feed-eyebrow").textContent = state.myGroups.length > 1
+    ? `${state.myGroups.find((g) => g.id === state.activeGroupId)?.name || ""} · Today`
+    : "Today";
+
+  if (!state.activeGroupId) {
+    renderFeedStandings(today, [], [], {}, {}, {});
+    renderFeedRecent([], {});
+    return;
+  }
+
+  const { data: memberRows, error: memberErr } = await sb
+    .from("group_members")
+    .select("user_id")
+    .eq("group_id", state.activeGroupId);
+  if (memberErr) console.error(memberErr);
+  const memberIds = (memberRows || []).map((r) => r.user_id);
+
   const [profilesRes, settingsRes, entriesRes, complimentsRes] = await Promise.all([
-    sb.from("profiles").select("user_id, display_name"),
-    sb.from("settings").select("user_id, pushup_goal"),
-    sb.from("activity_entries").select("user_id, entry_date, activity_type, amount, created_at").gte("entry_date", feedStart).order("created_at", { ascending: false }),
-    sb.from("compliments_feed").select("user_id, compliments").eq("entry_date", today),
+    sb.from("profiles").select("user_id, display_name").in("user_id", memberIds),
+    sb.from("settings").select("user_id, pushup_goal").in("user_id", memberIds),
+    sb.from("activity_entries").select("user_id, entry_date, activity_type, amount, created_at").in("user_id", memberIds).gte("entry_date", feedStart).order("created_at", { ascending: false }),
+    sb.from("compliments_feed").select("user_id, compliments").in("user_id", memberIds).eq("entry_date", today),
   ]);
 
   const profiles = profilesRes.data || [];
