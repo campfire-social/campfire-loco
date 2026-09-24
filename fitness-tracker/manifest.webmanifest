@@ -1,6 +1,6 @@
 {
-  "name": "100 A Day - Fitness Tracker",
-  "short_name": "100 A Day",
+  "name": "Consistency Beats Intensity",
+  "short_name": "Consistency",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
