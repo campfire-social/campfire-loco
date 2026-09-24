@@ -66,6 +66,7 @@ $("form-auth").addEventListener("submit", async (e) => {
   submitBtn.disabled = true;
   try {
     if (authMode === "signup") {
+      if (password.length < 6) { showLoginError("Password must be at least 6 characters."); return; }
       const { data, error } = await sb.auth.signUp({ email, password });
       if (error) { showLoginError(error.message); return; }
       if (!data.session) {
