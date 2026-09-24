@@ -407,18 +407,9 @@ button, input {
 }
 
 .exercise-switch button.active {
-  background: var(--surface);
-  color: var(--fg);
-  font-weight: 700;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14);
-}
-
-/* The group switch (AOTH/CLICK) gets a solid accent fill instead, so the
-   active group reads at a glance rather than blending into the card. */
-#group-switch button.active {
   background: var(--accent);
   color: var(--on-accent);
-  box-shadow: none;
+  font-weight: 700;
 }
 
 .quick-grid {
