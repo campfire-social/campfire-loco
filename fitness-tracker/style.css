@@ -193,10 +193,15 @@ button, input {
 /* ---------- Bottom tab bar ---------- */
 
 .tab-bar {
-  position: sticky;
+  position: fixed;
+  left: 0;
+  right: 0;
   bottom: 0;
+  max-width: 480px;
+  margin: 0 auto;
+  z-index: 20;
   display: flex;
-  padding: 10px 22px 26px;
+  padding: 10px 22px calc(20px + env(safe-area-inset-bottom));
   gap: 6px;
   border-top: 1px solid var(--rule);
   background: var(--screen);
@@ -233,7 +238,7 @@ button, input {
 /* ---------- Screen content column ---------- */
 
 .tab-panel {
-  padding: 16px 18px 24px;
+  padding: 16px 18px calc(100px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 14px;
