@@ -363,11 +363,14 @@ button, input {
 
 .ring-goal { font-size: 11px; color: var(--fg-muted); }
 .ring-goal-complete {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--accent);
+  max-width: 62px;
+  text-align: center;
+  line-height: 1.2;
 }
 .ring-name { font-size: 13px; font-weight: 600; }
 
