@@ -582,16 +582,15 @@ async function loadHistoryTab() {
   const startStr = toDateStr(start);
   const endStr = toDateStr(today);
 
-  const [rows, statusRows, latestWeight, monthReps, yearReps] = await Promise.all([
+  const [rows, statusRows, monthStatusRows, latestWeight, monthReps, yearReps] = await Promise.all([
     fetchOwnEntriesRange(startStr, endStr),
     fetchStatusRange(startStr, endStr),
+    fetchStatusRange(startOfMonthStr(), endStr),
     fetchLatestWeight(),
     fetchTotalReps(startOfMonthStr(), endStr),
     fetchTotalReps(startOfYearStr(), endStr),
   ]);
   const byDate = groupByDate(rows);
-  const weightByDate = {};
-  statusRows.forEach((s) => { if (s.weight != null) weightByDate[s.entry_date] = s.weight; });
 
   const days = []; // oldest to newest, 7 entries
   for (let i = 6; i >= 0; i--) days.push(toDateStr(addDays(today, -i)));
@@ -603,14 +602,18 @@ async function loadHistoryTab() {
     if (t) { repsTotal += t.pushup + t.situp; if (t.pushup + t.situp > 0) daysLogged++; }
   });
 
+  const weekCompliments = statusRows.reduce((sum, s) => sum + (s.compliments || 0), 0);
+  const monthCompliments = monthStatusRows.reduce((sum, s) => sum + (s.compliments || 0), 0);
+
   $("stat-week-reps").textContent = repsTotal;
   $("stat-month-reps").textContent = monthReps;
   $("stat-year-reps").textContent = yearReps;
   $("stat-days-logged").textContent = `${daysLogged}/7`;
   $("stat-weight").textContent = latestWeight ? latestWeight.weight : "—";
+  $("stat-week-compliments").textContent = weekCompliments;
+  $("stat-month-compliments").textContent = monthCompliments;
 
   renderWeekChart(days, byDate);
-  renderPastDays(days, byDate, weightByDate);
 }
 
 function renderWeekChart(days, byDate) {
@@ -625,6 +628,8 @@ function renderWeekChart(days, byDate) {
     const isToday = d === todayD;
     const col = document.createElement("div");
     col.className = "chart-col";
+    col.style.cursor = "pointer";
+    col.addEventListener("click", () => openDayDetail(d));
     if (total === 0 && isRestDay(parseDateStr(d))) {
       col.innerHTML = `
         <div class="chart-rest-block"><span class="chart-rest-text">Rest</span></div>
@@ -644,33 +649,6 @@ function renderWeekChart(days, byDate) {
       `;
     }
     cols.appendChild(col);
-  });
-}
-
-function renderPastDays(days, byDate, weightByDate) {
-  const list = $("past-days-list");
-  list.innerHTML = "";
-  // newest first for the list
-  [...days].reverse().forEach((d) => {
-    const t = byDate[d];
-    const hasActivity = !!t && (t.pushup + t.situp) > 0;
-    const weight = weightByDate[d];
-    const row = document.createElement("button");
-    row.className = "day-row";
-    const nameClass = hasActivity ? "" : "rest";
-    const sub = weight != null ? `${weight} lb` : (hasActivity ? "logged" : "rest day");
-    const counts = hasActivity
-      ? `<span class="day-count pushup">${t.pushup}</span><span class="day-count situp">${t.situp}</span>`
-      : `<span class="day-dash">&mdash;</span>`;
-    row.innerHTML = `
-      <div class="day-info">
-        <span class="day-name ${nameClass}">${friendlyDate(d)}</span>
-        <span class="day-sub">${sub}</span>
-      </div>
-      ${counts}
-    `;
-    row.addEventListener("click", () => openDayDetail(d));
-    list.appendChild(row);
   });
 }
 
