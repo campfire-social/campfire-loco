@@ -28,6 +28,7 @@
   --fg-dim: #c9c2b1;
   --track: #ede8d6;
   --accent: #b64500;
+  --curl: #9c7a2e;
   --rule: rgba(0, 0, 0, 0.14);
   --on-accent: #ffffff;
   --on-fg: #ffffff;
@@ -56,6 +57,7 @@
     --fg-dim: #5c564b;
     --track: #2b2823;
     --accent: #b64500;
+    --curl: #c99f3e;
     --rule: rgba(230, 224, 200, 0.14);
     --on-accent: #0a0908;
     --on-fg: #0a0908;
@@ -333,6 +335,16 @@ button, input {
 .ring-wrap { position: relative; width: 118px; height: 118px; }
 .ring-wrap svg { width: 118px; height: 118px; transform: rotate(-90deg); }
 
+/* Shrinks the rings so three fit the row (push-ups/sit-ups/curls) without
+   overflowing on a phone-width screen. */
+.rings-card.three-up { padding: 18px 12px; gap: 8px; }
+.rings-card.three-up .ring-wrap,
+.rings-card.three-up .ring-wrap svg { width: 92px; height: 92px; }
+.rings-card.three-up .ring-count { font-size: 24px; }
+.rings-card.three-up .ring-goal { font-size: 10px; }
+.rings-card.three-up .ring-goal-complete { font-size: 8px; max-width: 46px; }
+.rings-card.three-up .ring-name { font-size: 12px; }
+
 .ring-track { fill: none; stroke: var(--track); stroke-width: 10; }
 .ring-value {
   fill: none;
@@ -343,6 +355,7 @@ button, input {
 }
 .ring-value.pushup { stroke: var(--accent); }
 .ring-value.situp { stroke: var(--fg); }
+.ring-value.curl { stroke: var(--curl); }
 
 .ring-center {
   position: absolute;
@@ -390,8 +403,13 @@ button, input {
   0%, 100% { filter: drop-shadow(0 0 0 transparent); }
   50% { filter: drop-shadow(0 0 6px var(--fg)); }
 }
+@keyframes glow-pulse-curl {
+  0%, 100% { filter: drop-shadow(0 0 0 transparent); }
+  50% { filter: drop-shadow(0 0 6px var(--curl)); }
+}
 .ring-value.pushup.complete { animation: glow-pulse-accent 1.8s ease-in-out infinite; }
 .ring-value.situp.complete { animation: glow-pulse-fg 1.8s ease-in-out infinite; }
+.ring-value.curl.complete { animation: glow-pulse-curl 1.8s ease-in-out infinite; }
 
 /* ---------- Quick-add card ---------- */
 
@@ -472,6 +490,7 @@ button, input {
 
 .entry-dot { width: 6px; height: 6px; flex-shrink: 0; background: var(--accent); }
 .entry-dot.situp { background: var(--fg); }
+.entry-dot.curl { background: var(--curl); }
 
 .entry-delta {
   font-family: var(--font-sans);

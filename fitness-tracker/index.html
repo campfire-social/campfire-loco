@@ -68,7 +68,7 @@
           </div>
         </div>
 
-        <div class="card rings-card">
+        <div class="card rings-card" id="rings-card">
           <div class="ring-col">
             <div class="ring-wrap" id="ring-pushup-wrap">
               <svg viewBox="0 0 120 120">
@@ -97,6 +97,20 @@
             </div>
             <span class="ring-name">Sit-ups</span>
           </div>
+          <div class="ring-col hidden" id="ring-curl-col">
+            <div class="ring-wrap" id="ring-curl-wrap">
+              <svg viewBox="0 0 120 120">
+                <circle class="ring-track" cx="60" cy="60" r="52"></circle>
+                <circle class="ring-value curl" id="ring-curl" cx="60" cy="60" r="52"></circle>
+              </svg>
+              <div class="ring-center">
+                <span class="ring-count" id="today-curls">0</span>
+                <span class="ring-goal" id="ring-curl-goal">of <span id="goal-curls">60</span></span>
+                <span class="ring-goal-complete hidden" id="ring-curl-complete">Goal complete!</span>
+              </div>
+            </div>
+            <span class="ring-name">Curls</span>
+          </div>
         </div>
 
         <div class="card">
@@ -110,6 +124,18 @@
             <button class="quick-btn fill" data-amount="20">+20</button>
             <button class="quick-btn outline" data-amount="25">+25</button>
             <button class="quick-btn outline" data-amount="50">+50</button>
+            <button class="quick-btn custom" data-custom="1">Custom</button>
+          </div>
+        </div>
+
+        <div class="card hidden" id="curl-card">
+          <span class="card-title">Curls &mdash; Mon/Wed/Fri</span>
+          <div class="quick-grid" id="curl-grid">
+            <button class="quick-btn fill" data-amount="10">+10</button>
+            <button class="quick-btn fill" data-amount="15">+15</button>
+            <button class="quick-btn fill" data-amount="20">+20</button>
+            <button class="quick-btn outline" data-amount="25">+25</button>
+            <button class="quick-btn outline" data-amount="30">+30</button>
             <button class="quick-btn custom" data-custom="1">Custom</button>
           </div>
         </div>

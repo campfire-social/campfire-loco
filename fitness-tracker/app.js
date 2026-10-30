@@ -20,6 +20,11 @@ function friendlyDate(dateStr) {
 
 const RING_CIRC = 2 * Math.PI * 52; // matches SVG r=52
 
+// Mack's personal Mon/Wed/Fri curls tracker — not a group-wide feature, no streak.
+const MACK_USER_ID = "bfb3ecf0-a3b0-4bfc-a3c6-ebd4f1f7e11a";
+const CURL_GOAL = 60;
+function isCurlDay(d = new Date()) { return [1, 3, 5].includes(d.getDay()); }
+
 // ---------- State ----------
 const state = {
   session: null,
@@ -251,7 +256,7 @@ async function fetchOwnEntriesRange(startDate, endDate) {
 function groupByDate(rows) {
   const byDate = {};
   for (const r of rows) {
-    const day = (byDate[r.entry_date] ??= { pushup: 0, situp: 0 });
+    const day = (byDate[r.entry_date] ??= { pushup: 0, situp: 0, curl: 0 });
     day[r.activity_type] += r.amount;
   }
   return byDate;
@@ -406,9 +411,14 @@ async function loadTodayTab() {
     fetchStatusForDate(today),
   ]);
   const byDate = groupByDate(rangeRows);
-  const todayTotals = byDate[today] || { pushup: 0, situp: 0 };
+  const todayTotals = byDate[today] || { pushup: 0, situp: 0, curl: 0 };
 
-  renderRings(todayTotals);
+  const showCurls = state.session.user.id === MACK_USER_ID && isCurlDay();
+  $("ring-curl-col").classList.toggle("hidden", !showCurls);
+  $("curl-card").classList.toggle("hidden", !showCurls);
+  $("rings-card").classList.toggle("three-up", showCurls);
+
+  renderRings(todayTotals, showCurls);
   $("streak-num").textContent = computeStreak(byDate, state.pushupGoal);
   $("today-headline").textContent = todayHeadline(personPct(todayTotals, state.pushupGoal));
 
@@ -434,7 +444,7 @@ function triggerPop(el) {
   el.classList.add("pop");
 }
 
-function renderRings(totals) {
+function renderRings(totals, showCurls) {
   const pushupGoal = state.pushupGoal;
   const situpGoal = state.pushupGoal * 2;
 
@@ -448,6 +458,13 @@ function renderRings(totals) {
 
   updateRingCompletion("pushup", totals.pushup >= pushupGoal);
   updateRingCompletion("situp", totals.situp >= situpGoal);
+
+  if (showCurls) {
+    $("today-curls").textContent = totals.curl;
+    const curlPct = Math.min(1, totals.curl / CURL_GOAL);
+    $("ring-curl").style.strokeDasharray = `${curlPct * RING_CIRC} ${RING_CIRC}`;
+    updateRingCompletion("curl", totals.curl >= CURL_GOAL);
+  }
 }
 
 // Swaps the ring's "of X" caption for a "Goal complete!" one, with a glow
@@ -523,11 +540,12 @@ function renderEntryList(listEl, emptyEl, entries) {
   for (const entry of entries) {
     const li = document.createElement("li");
     const time = new Date(entry.created_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-    const isSitup = entry.activity_type === "situp";
+    const labels = { pushup: "Push-ups", situp: "Sit-ups", curl: "Curls" };
+    const dotClass = entry.activity_type === "pushup" ? "" : entry.activity_type;
     li.innerHTML = `
-      <span class="entry-dot ${isSitup ? "situp" : ""}"></span>
+      <span class="entry-dot ${dotClass}"></span>
       <span class="entry-delta">+${entry.amount}</span>
-      <span class="entry-name">${isSitup ? "Sit-ups" : "Push-ups"}</span>
+      <span class="entry-name">${labels[entry.activity_type] || entry.activity_type}</span>
       <span class="entry-time">${time}</span>
       <button class="entry-delete" aria-label="Delete">&times;</button>
     `;
@@ -558,11 +576,13 @@ document.addEventListener("click", async (e) => {
   const btn = e.target.closest(".quick-btn");
   if (!btn) return;
   const isDayDetail = btn.closest("#day-detail-grid");
-  const activityType = isDayDetail ? state.dayDetailExercise : state.todayExercise;
+  const isCurl = btn.closest("#curl-grid");
+  const activityType = isCurl ? "curl" : (isDayDetail ? state.dayDetailExercise : state.todayExercise);
   const targetDate = isDayDetail ? state.dayDetailDate : todayStr();
   let amount;
   if (btn.dataset.custom) {
-    const raw = prompt(`How many ${activityType === "situp" ? "sit-ups" : "push-ups"}?`);
+    const label = activityType === "situp" ? "sit-ups" : activityType === "curl" ? "curls" : "push-ups";
+    const raw = prompt(`How many ${label}?`);
     if (raw === null) return;
     amount = parseInt(raw, 10);
     if (!amount || amount <= 0) return;
