@@ -357,31 +357,18 @@ function goalsMetOn(dateStr, byDate, pushupGoal) {
   return day.pushup >= pushupGoal && day.situp >= pushupGoal * 2;
 }
 
-// Sundays are a scheduled rest day: they neither extend nor break the
-// streak, so the count from the week before just carries straight through
-// to Monday.
+// Sundays are a scheduled rest day (used by the weekly chart to show a
+// "Rest" block instead of an empty day).
 function isRestDay(d) { return d.getDay() === 0; }
 
-function computeStreak(byDate, pushupGoal) {
-  const todayDateStr = todayStr();
-  let streak = 0;
-  let cursor = new Date();
-
-  while (true) {
-    if (isRestDay(cursor)) {
-      cursor = addDays(cursor, -1);
-      continue;
-    }
-    const dateStr = toDateStr(cursor);
-    if (goalsMetOn(dateStr, byDate, pushupGoal)) {
-      streak++;
-    } else if (dateStr !== todayDateStr) {
-      // A miss on any day other than today (which isn't over yet) ends the streak.
-      break;
-    }
-    cursor = addDays(cursor, -1);
+// Lifetime count of days both goals were hit — not a consecutive-day streak,
+// so a missed day just isn't counted rather than resetting anything.
+function countDaysCompleted(byDate, pushupGoal) {
+  let count = 0;
+  for (const dateStr in byDate) {
+    if (goalsMetOn(dateStr, byDate, pushupGoal)) count++;
   }
-  return streak;
+  return count;
 }
 
 function personPct(totals, pushupGoal) {
@@ -406,7 +393,7 @@ async function loadTodayTab() {
   }).toUpperCase();
 
   const [rangeRows, entries, statusRow] = await Promise.all([
-    fetchOwnEntriesRange(toDateStr(addDays(new Date(), -90)), today),
+    fetchOwnEntriesRange("2000-01-01", today),
     fetchEntriesForDate(today),
     fetchStatusForDate(today),
   ]);
@@ -419,7 +406,7 @@ async function loadTodayTab() {
   $("rings-card").classList.toggle("three-up", showCurls);
 
   renderRings(todayTotals, showCurls);
-  $("streak-num").textContent = computeStreak(byDate, state.pushupGoal);
+  $("streak-num").textContent = countDaysCompleted(byDate, state.pushupGoal);
   $("today-headline").textContent = todayHeadline(personPct(todayTotals, state.pushupGoal));
 
   renderTodayLog(entries);
