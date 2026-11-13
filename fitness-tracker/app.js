@@ -582,6 +582,34 @@ document.addEventListener("click", async (e) => {
   if (isDayDetail) loadDayDetail(targetDate); else loadTodayTab();
 });
 
+// ---------- Mega Workout ----------
+const MEGA_PUSHUP_AMOUNT = 100;
+const MEGA_SITUP_AMOUNT = 200;
+
+function fireMegaCelebration() {
+  const overlay = $("mega-overlay");
+  overlay.classList.remove("hidden");
+  overlay.classList.remove("firing");
+  void overlay.offsetWidth;
+  overlay.classList.add("firing");
+  setTimeout(() => {
+    overlay.classList.add("hidden");
+    overlay.classList.remove("firing");
+  }, 1600);
+}
+
+$("btn-mega-workout").addEventListener("click", async () => {
+  const btn = $("btn-mega-workout");
+  btn.disabled = true;
+  await Promise.all([
+    addEntry(todayStr(), "pushup", MEGA_PUSHUP_AMOUNT),
+    addEntry(todayStr(), "situp", MEGA_SITUP_AMOUNT),
+  ]);
+  fireMegaCelebration();
+  btn.disabled = false;
+  loadTodayTab();
+});
+
 // ---------- History tab ----------
 async function loadHistoryTab() {
   const today = new Date();

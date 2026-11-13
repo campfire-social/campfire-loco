@@ -463,6 +463,101 @@ button, input {
 .quick-btn.outline { background: var(--screen); border: 1px solid var(--rule); color: var(--accent); }
 .quick-btn.custom { background: var(--track); color: var(--fg-muted); font-size: 15px; font-weight: 600; }
 
+/* ---------- Mega Workout ---------- */
+
+.mega-card { align-items: center; gap: 8px; }
+
+.mega-btn {
+  width: 100%;
+  border: none;
+  padding: 20px 18px;
+  font-family: var(--font-sans);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--on-accent);
+  background: linear-gradient(135deg, var(--accent), var(--curl));
+  background-size: 200% 200%;
+  cursor: pointer;
+  animation: mega-btn-glow 2.4s ease-in-out infinite;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.mega-btn:active { transform: scale(0.97); }
+.mega-btn:disabled { opacity: 0.6; animation: none; }
+
+.mega-hint { font-size: 11px; text-align: center; }
+
+@keyframes mega-btn-glow {
+  0%, 100% { background-position: 0% 50%; box-shadow: 0 0 0 rgba(182, 69, 0, 0); }
+  50% { background-position: 100% 50%; box-shadow: 0 0 18px rgba(182, 69, 0, 0.45); }
+}
+
+/* Full-screen "epic" celebration fired when Mega Workout is logged. */
+.mega-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.mega-flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, var(--curl), var(--accent) 70%);
+  opacity: 0;
+}
+.mega-overlay.firing .mega-flash { animation: mega-flash 1.1s ease-out forwards; }
+
+.mega-banner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  transform: scale(0.3) rotate(-6deg);
+}
+.mega-overlay.firing .mega-banner { animation: mega-pop 1.6s var(--ease-out) forwards; }
+
+.mega-banner-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 56px;
+  line-height: 0.95;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 0 24px var(--accent), 0 0 48px var(--curl), 0 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+.mega-banner-sub {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes mega-flash {
+  0% { opacity: 0; }
+  15% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+
+@keyframes mega-pop {
+  0% { opacity: 0; transform: scale(0.3) rotate(-6deg); }
+  35% { opacity: 1; transform: scale(1.18) rotate(2deg); }
+  50% { transform: scale(0.96) rotate(-1deg); }
+  65% { transform: scale(1.04) rotate(0.5deg); }
+  80% { transform: scale(1) rotate(0deg); }
+  100% { opacity: 0; transform: scale(1) rotate(0deg); }
+}
+
 /* ---------- Log / entry rows ---------- */
 
 .log-header {

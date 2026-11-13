@@ -140,6 +140,11 @@
           </div>
         </div>
 
+        <div class="card mega-card">
+          <button type="button" class="mega-btn" id="btn-mega-workout">Mega Workout</button>
+          <p class="muted mega-hint">+100 push-ups &middot; +200 sit-ups, logged instantly</p>
+        </div>
+
         <div class="card" id="compliments-card">
           <span class="card-title compliments-title">Compliments &amp; Thankfulness</span>
           <p class="muted" id="compliments-subtitle">Goal: To notice her glory!</p>
@@ -364,6 +369,14 @@
       </nav>
 
     </section>
+  </div>
+
+  <div class="mega-overlay hidden" id="mega-overlay" aria-hidden="true">
+    <div class="mega-flash"></div>
+    <div class="mega-banner">
+      <span class="mega-banner-title">MEGA<br>WORKOUT</span>
+      <span class="mega-banner-sub">+100 push-ups &middot; +200 sit-ups</span>
+    </div>
   </div>
 
   <script src="vendor-supabase.js"></script>
